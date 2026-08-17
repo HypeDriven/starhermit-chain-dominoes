@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#241c15">
+<title>Chain Dominoes</title>
+<meta name="description" content="Chain Dominoes — a café-tabletop tile game. Match the open ends, empty your hand, mind your pips.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='2' width='24' height='28' rx='4' fill='%23f4efe4'/%3E%3Cline x1='4' y1='16' x2='28' y2='16' stroke='%232b2b30' stroke-width='2'/%3E%3Ccircle cx='16' cy='9' r='3' fill='%232b2b30'/%3E%3Ccircle cx='11' cy='23' r='2.4' fill='%23d98e3a'/%3E%3Ccircle cx='21' cy='23' r='2.4' fill='%23d98e3a'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<!-- Live regions for screen readers -->
+<div id="sr-live" class="sr-only" aria-live="polite" role="status"></div>
+<div id="sr-assertive" class="sr-only" aria-live="assertive" role="alert"></div>
+
+<div id="app">
+
+  <!-- ============ TITLE ============ -->
+  <section id="screen-title" class="screen active" aria-labelledby="title-heading">
+    <div class="title-hero">
+      <div class="title-logo" aria-hidden="true">
+        <span class="logo-tile"><i></i><i></i></span>
+        <span class="logo-tile tilted"><i></i><i></i></span>
+        <span class="logo-tile"><i></i><i></i></span>
+      </div>
+      <h1 id="title-heading">Chain Dominoes</h1>
+      <p class="tagline">A café-table game of matching ends and light hands.</p>
+    </div>
+    <nav class="title-menu" aria-label="Main menu">
+      <button id="btn-continue" class="btn btn-primary btn-big hidden">Continue Match</button>
+      <button id="btn-quick-play" class="btn btn-primary btn-big">Play</button>
+      <button id="btn-daily" class="btn">Daily Table <span id="daily-badge" class="badge hidden">done</span></button>
+      <button id="btn-journey" class="btn">Journey <span id="journey-progress-label" class="menu-sub"></span></button>
+      <button id="btn-practice" class="btn">Practice</button>
+      <button id="btn-challenge" class="btn">Challenges</button>
+      <button id="btn-learn" class="btn">Learn to Play <span id="learn-progress-label" class="menu-sub"></span></button>
+      <button id="btn-hosted" class="btn hidden">Hosted Play</button>
+    </nav>
+    <footer class="title-footer">
+      <button id="btn-profile" class="btn btn-ghost">Profile</button>
+      <button id="btn-settings" class="btn btn-ghost">Settings</button>
+      <button id="btn-help" class="btn btn-ghost">How to Play</button>
+    </footer>
+    <p id="host-status" class="host-status" role="note"></p>
+  </section>
+
+  <!-- ============ LEARN ============ -->
+  <section id="screen-learn" class="screen" aria-labelledby="learn-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back to title">← Back</button>
+      <h2 id="learn-heading">Learn to Play</h2>
+    </header>
+    <p class="screen-sub">Six short lessons. Each one asks you to make the move yourself.</p>
+    <ol id="tutorial-list" class="card-list"></ol>
+  </section>
+
+  <!-- ============ JOURNEY ============ -->
+  <section id="screen-journey" class="screen" aria-labelledby="journey-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back to title">← Back</button>
+      <h2 id="journey-heading">Journey</h2>
+      <span id="journey-stars-total" class="stars-total" aria-label="Total stars"></span>
+    </header>
+    <p class="screen-sub">Forty tables across the café circuit. Mastery tables every eighth stop.</p>
+    <ol id="journey-list" class="journey-list"></ol>
+  </section>
+
+  <!-- ============ SETUP (practice / daily / challenge / journey detail) ============ -->
+  <section id="screen-setup" class="screen" aria-labelledby="setup-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back">← Back</button>
+      <h2 id="setup-heading">Set the Table</h2>
+    </header>
+    <div id="setup-body" class="setup-body"></div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section id="screen-game" class="screen screen-game" aria-label="Game table">
+    <!-- top status bar -->
+    <header id="game-statusbar" role="banner">
+      <button id="btn-pause" class="btn btn-ghost" aria-label="Pause menu">☰</button>
+      <div id="hud-objective" class="hud-objective" tabindex="0"></div>
+      <div id="hud-clock" class="hud-clock hidden" aria-label="Time remaining"></div>
+      <div id="hud-scores" class="hud-scores" aria-label="Scores"></div>
+    </header>
+
+    <!-- left rail: objective & progress (drawer on small screens) -->
+    <aside id="rail-left" class="rail rail-left" aria-label="Objective and round status">
+      <h3 class="rail-title">Table</h3>
+      <div id="rail-objective"></div>
+      <div id="rail-round"></div>
+      <div id="rail-boneyard"></div>
+      <div id="rail-ruleset"></div>
+    </aside>
+
+    <!-- playfield -->
+    <main id="main" class="playfield" aria-label="Domino table">
+      <canvas id="glcanvas" aria-hidden="true"></canvas>
+      <div id="webgl-fallback" class="webgl-fallback hidden" role="note">
+        <p>3D view is unavailable in this browser. The full game remains playable with the on-screen controls below.</p>
+      </div>
+      <div id="tutorial-banner" class="tutorial-banner hidden" role="note" aria-live="polite">
+        <span id="tutorial-step-count"></span>
+        <p id="tutorial-text"></p>
+        <button id="btn-tutorial-quit" class="btn btn-ghost btn-sm">Quit lesson</button>
+      </div>
+      <!-- DOM mirror of the chain: the always-usable interface layer -->
+      <div id="chain-strip-wrap" class="chain-strip-wrap" aria-label="Chain on the table">
+        <button id="btn-end-left" class="end-cap hidden" data-end="left"></button>
+        <ol id="chain-strip" class="chain-strip"></ol>
+        <button id="btn-end-right" class="end-cap hidden" data-end="right"></button>
+      </div>
+    </main>
+
+    <!-- right rail: contextual actions & status (drawer on small screens) -->
+    <aside id="rail-right" class="rail rail-right" aria-label="Actions">
+      <h3 class="rail-title">Actions</h3>
+      <button id="btn-draw" class="btn btn-action hidden">Draw <kbd>W</kbd></button>
+      <button id="btn-pass" class="btn btn-action hidden">Pass <kbd>S</kbd></button>
+      <button id="btn-hint" class="btn btn-action">Hint <kbd>H</kbd></button>
+      <button id="btn-undo" class="btn btn-action">Undo <kbd>U</kbd></button>
+      <button id="btn-skip" class="btn btn-action">Skip anim</button>
+      <div id="turn-indicator" class="turn-indicator" aria-live="polite"></div>
+    </aside>
+
+    <!-- bottom action tray: the player's hand (primary control surface) -->
+    <footer id="hand-tray" aria-label="Your hand">
+      <div id="hand-label" class="hand-label">Your hand</div>
+      <ol id="hand-list" class="hand-list" role="listbox" aria-label="Your tiles"></ol>
+    </footer>
+  </section>
+
+  <!-- ============ PROFILE ============ -->
+  <section id="screen-profile" class="screen" aria-labelledby="profile-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back to title">← Back</button>
+      <h2 id="profile-heading">Profile</h2>
+    </header>
+    <div class="profile-grid">
+      <section class="panel" aria-labelledby="p-id">
+        <h3 id="p-id">Player</h3>
+        <label class="field">Display name
+          <input id="input-name" type="text" maxlength="24" autocomplete="off">
+        </label>
+        <p id="profile-kind" class="muted"></p>
+        <button id="btn-save-name" class="btn">Save name</button>
+      </section>
+      <section class="panel" aria-labelledby="p-stats">
+        <h3 id="p-stats">Record</h3>
+        <dl id="stats-list" class="stats-list"></dl>
+      </section>
+      <section class="panel" aria-labelledby="p-ach">
+        <h3 id="p-ach">Achievements</h3>
+        <ul id="achievements-list" class="ach-list"></ul>
+      </section>
+      <section class="panel" aria-labelledby="p-lb">
+        <h3 id="p-lb">Leaderboards</h3>
+        <div class="lb-tabs" role="tablist">
+          <button class="lb-tab active" data-lb="local" role="tab">This device</button>
+          <button class="lb-tab" data-lb="global" role="tab">Global</button>
+          <button class="lb-tab" data-lb="daily" role="tab">Daily</button>
+        </div>
+        <ol id="leaderboard-list" class="lb-list"></ol>
+        <p id="lb-note" class="muted"></p>
+      </section>
+      <section id="panel-conflict" class="panel hidden" aria-labelledby="p-conflict">
+        <h3 id="p-conflict">Save conflict</h3>
+        <p>Two different saves were found. Choose which one to keep — nothing is deleted until you pick.</p>
+        <button id="btn-keep-local" class="btn">Keep this device</button>
+        <button id="btn-keep-remote" class="btn">Keep cloud save</button>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="screen-settings" class="screen" aria-labelledby="settings-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back">← Back</button>
+      <h2 id="settings-heading">Settings</h2>
+    </header>
+    <div id="settings-body" class="settings-body">
+      <section class="panel" aria-labelledby="s-audio"><h3 id="s-audio">Audio</h3>
+        <label class="field"><input type="checkbox" id="set-muted"> Mute all</label>
+        <label class="field slider">Music <input type="range" id="vol-music" min="0" max="1" step="0.05"></label>
+        <label class="field slider">Effects <input type="range" id="vol-effects" min="0" max="1" step="0.05"></label>
+        <label class="field slider">Ambience <input type="range" id="vol-ambience" min="0" max="1" step="0.05"></label>
+        <label class="field slider">Voice <input type="range" id="vol-voice" min="0" max="1" step="0.05"></label>
+      </section>
+      <section class="panel" aria-labelledby="s-graphics"><h3 id="s-graphics">Graphics</h3>
+        <label class="field">Quality
+          <select id="set-quality">
+            <option value="auto">Auto</option><option value="low">Low</option>
+            <option value="medium">Medium</option><option value="high">High</option>
+          </select>
+        </label>
+        <label class="field">Table theme <select id="set-theme"></select></label>
+        <label class="field"><input type="checkbox" id="set-numbers"> Show numbers on tiles</label>
+      </section>
+      <section class="panel" aria-labelledby="s-a11y"><h3 id="s-a11y">Accessibility</h3>
+        <label class="field"><input type="checkbox" id="set-motion"> Reduce motion</label>
+        <label class="field"><input type="checkbox" id="set-contrast"> High contrast</label>
+        <label class="field"><input type="checkbox" id="set-largetext"> Larger text</label>
+        <label class="field"><input type="checkbox" id="set-lefthand"> Left-handed layout</label>
+        <label class="field">Color-vision palette
+          <select id="set-cvd">
+            <option value="none">Default</option><option value="protanopia">Protanopia</option>
+            <option value="deuteranopia">Deuteranopia</option><option value="tritanopia">Tritanopia</option>
+          </select>
+        </label>
+        <label class="field"><input type="checkbox" id="set-timing"> Timing assistance (longer limits)</label>
+        <label class="field"><input type="checkbox" id="set-haptics"> Haptics (vibration)</label>
+        <label class="field"><input type="checkbox" id="set-hold"> Hold to confirm</label>
+        <button id="btn-replay-tutorials" class="btn">Replay tutorials</button>
+      </section>
+      <section class="panel" aria-labelledby="s-game"><h3 id="s-game">Gameplay</h3>
+        <label class="field"><input type="checkbox" id="set-hints"> Allow hints</label>
+        <label class="field"><input type="checkbox" id="set-undo"> Allow undo (practice/journey)</label>
+      </section>
+      <section class="panel" aria-labelledby="s-keys"><h3 id="s-keys">Keyboard &amp; gamepad</h3>
+        <dl id="bindings-list" class="bindings-list"></dl>
+        <p class="muted">Gamepad: left stick / D-pad moves focus, A confirms, B cancels, Start pauses, X draws, Y hints.</p>
+      </section>
+      <section class="panel" aria-labelledby="s-data"><h3 id="s-data">Data &amp; privacy</h3>
+        <label class="field"><input type="checkbox" id="set-telemetry"> Anonymous usage statistics</label>
+        <p class="muted">Only start/tutorial/round-end/retry/settings/error events. Never text, names, or pointer trails.</p>
+        <button id="btn-reset-save" class="btn btn-danger">Erase local progress</button>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============ HELP ============ -->
+  <section id="screen-help" class="screen" aria-labelledby="help-heading">
+    <header class="screen-head">
+      <button class="btn btn-ghost btn-back" data-nav="title" aria-label="Back">← Back</button>
+      <h2 id="help-heading">How to Play</h2>
+    </header>
+    <div id="help-body" class="help-body"></div>
+  </section>
+
+  <!-- ============ OVERLAYS ============ -->
+  <div id="overlay-pause" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-heading">
+    <div class="overlay-card">
+      <h2 id="pause-heading">Paused</h2>
+      <button id="btn-resume" class="btn btn-primary">Resume</button>
+      <button id="btn-pause-settings" class="btn">Settings</button>
+      <button id="btn-pause-help" class="btn">How to Play</button>
+      <button id="btn-leave-match" class="btn btn-danger">Leave match</button>
+    </div>
+  </div>
+
+  <div id="overlay-round" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="round-heading">
+    <div class="overlay-card">
+      <h2 id="round-heading">Round over</h2>
+      <div id="round-breakdown" class="breakdown"></div>
+      <button id="btn-next-round" class="btn btn-primary">Next round</button>
+    </div>
+  </div>
+
+  <div id="overlay-results" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="results-heading">
+    <div class="overlay-card overlay-wide">
+      <h2 id="results-heading">Result</h2>
+      <div id="results-stars" class="results-stars" aria-label="Stars earned"></div>
+      <div id="results-breakdown" class="breakdown"></div>
+      <div id="results-unlocks" class="unlocks"></div>
+      <div id="results-meta" class="muted"></div>
+      <div class="overlay-actions">
+        <button id="btn-results-retry" class="btn btn-primary">Play again</button>
+        <button id="btn-results-next" class="btn hidden">Next stage</button>
+        <button id="btn-results-menu" class="btn btn-ghost">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay-achievement" class="toast hidden" role="status" aria-live="polite"></div>
+  <div id="overlay-captions" class="captions" aria-hidden="true"></div>
+</div>
+
+<noscript>
+  <div style="padding:2rem;font-family:sans-serif">Chain Dominoes needs JavaScript to run. Please enable it and reload.</div>
+</noscript>
+
+<script src="vendor/three.min.js" defer></script>
+<script src="js/rules.js" defer></script>
+<script src="js/content.js" defer></script>
+<script src="js/ai.js" defer></script>
+<script src="js/audio.js" defer></script>
+<script src="js/platform.js" defer></script>
+<script src="js/render3d.js" defer></script>
+<script src="js/session.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "chain-dominoes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chain Dominoes — café-tabletop tile game (browser, self-contained).",
+  "scripts": {
+    "start": "python3 -m http.server 8571",
+    "test": "node test/rules.test.js && node test/content.test.js && node test/server.test.js",
+    "test:browser": "node test/browser.test.js"
+  }
+}

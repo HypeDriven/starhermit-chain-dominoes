@@ -1,0 +1,7 @@
+name=Chain Dominoes
+launch=index.html
+server=server.js
+version=1.0.0
+contentVersion=1
+players=2-4
+orientation=any
