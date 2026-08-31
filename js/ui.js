@@ -126,7 +126,7 @@
       on('btn-leave-match', () => this.leaveMatch());
       on('btn-pause-settings', () => { this._closeOverlay('overlay-pause'); this._nav('settings'); });
       on('btn-pause-help', () => { this._closeOverlay('overlay-pause'); this._nav('help'); });
-      on('btn-next-round', () => { this._closeOverlay('overlay-round'); if (this.game) this.game.continueNextRound(); });
+      on('btn-next-round', () => { this._closeOverlay('overlay-round'); if (this.game) this.game.continueNextRound(); this.audio.roundIntro(); });
       on('btn-results-retry', () => this._retry());
       on('btn-results-next', () => this._nextStage());
       on('btn-results-menu', () => { this._closeOverlay('overlay-results'); this._toTitle(); });
@@ -156,6 +156,7 @@
         input.addEventListener('change', () => {
           const v = input.type === 'checkbox' ? input.checked : input.value;
           apply(v);
+          if (input.type === 'checkbox') this.audio.toggle();
           this.store.saveNow();
           P().telemetry.event('settings-change', { key });
           this._applySettingsClasses();
@@ -181,6 +182,17 @@
       bind('set-undo', 'undo', v => { S().undo = v; });
       bind('set-telemetry', 'telemetry', v => P().telemetry.setConsent(v));
 
+      // volume sliders: drag sound while sliding (throttled)
+      ['vol-music', 'vol-effects', 'vol-ambience', 'vol-voice'].forEach(id => {
+        const s = $(id);
+        if (!s) return;
+        let lastDrag = 0;
+        s.addEventListener('input', () => {
+          const n = Date.now();
+          if (n - lastDrag > 120) { lastDrag = n; this.audio.sliderDrag(); }
+        });
+      });
+
       // audio unlock on first gesture + captions wiring
       const unlockAudio = () => {
         if (this.audio.init()) {
@@ -198,8 +210,14 @@
         t.addEventListener('click', () => {
           document.querySelectorAll('.lb-tab').forEach(x => x.classList.remove('active'));
           t.classList.add('active');
+          this.audio.tabSwitch();
           this._buildLeaderboard(t.dataset.lb);
         }));
+
+      // hover tick on interactive elements
+      document.addEventListener('pointerover', (e) => {
+        if (e.target.closest && e.target.closest('button, .lb-tab, [data-nav], input, select')) this.audio.hover();
+      });
     }
 
     /* ---------------------------------------------------------- settings */
@@ -565,6 +583,9 @@
       this._buildGameChrome(mode, content, config);
       $('hud-clock').classList.toggle('hidden', !(options.timeLimitSec > 0));
       this.audio.init(); this.audio.resume(); this._applyVolumes(); this.audio.startAll();
+      this.audio.confirm();
+      this.audio.roundIntro();
+      this._timerWarned = false;
       P().host.startActivity();
       this._heartbeat();
       this._refreshView();
@@ -765,7 +786,7 @@
       if (name === 'round-end') this._showRoundOverlay(payload);
       else if (name === 'results') this._showResults(payload);
       else if (name === 'invalid') { this._haptic([40, 60, 40]); }
-      else if (name === 'achievement') this._toast('Achievement: ' + payload.name + ' — ' + payload.desc);
+      else if (name === 'achievement') { this.audio.success(); this._toast('Achievement: ' + payload.name + ' — ' + payload.desc); }
       else if (name === 'tutorial-complete') this._showTutorialComplete(payload);
       else if (name === 'tutorial') { /* banner handled in view */ }
       else if (name === 'hint') {
@@ -777,6 +798,14 @@
         }
       } else if (name === 'clock') {
         $('hud-clock').textContent = fmtTime(payload.remainingMs);
+        if (payload.remainingMs <= 10000) {
+          if (!this._timerWarned) { this._timerWarned = true; this.audio.timerWarning(); }
+          const sec = Math.ceil(payload.remainingMs / 1000);
+          if (payload.remainingMs <= 5000 && sec !== this._lastCountdownSec) {
+            this._lastCountdownSec = sec;
+            this.audio.countdownTick();
+          }
+        } else { this._timerWarned = false; this._lastCountdownSec = 0; }
       }
     }
 
@@ -784,6 +813,7 @@
     _openOverlay(id) {
       this._lastFocus = document.activeElement;
       $(id).classList.remove('hidden');
+      if (id !== 'overlay-pause') this.audio.modalOpen();
       const focusable = $(id).querySelectorAll('button, [href], input, select, [tabindex]:not([tabindex="-1"])');
       if (focusable.length) setTimeout(() => focusable[0].focus(), 40);
       const trap = (e) => {
@@ -799,6 +829,7 @@
     }
     _closeOverlay(id) {
       $(id).classList.add('hidden');
+      if (id !== 'overlay-pause') this.audio.panelClose();
       if ($(id)._trap) $(id).removeEventListener('keydown', $(id)._trap);
       if (this._lastFocus && document.contains(this._lastFocus)) this._lastFocus.focus();
       this._lastFocus = null;
@@ -810,11 +841,13 @@
     pauseGame() {
       if (!this.game || this.screen !== 'game') return;
       this.game.pause();
+      this.audio.gamePause();
       this._openOverlay('overlay-pause');
       this._announce('Paused.');
     }
     resumeGame() {
       this._closeOverlay('overlay-pause');
+      this.audio.gameResume();
       if (this.game) this.game.resume();
       this._announce('Resumed. ' + (this.game && this.game.buildView().myTurn ? 'Your turn.' : ''));
     }
@@ -845,6 +878,7 @@
       if (this.game) { this.game.leave(); this.game = null; }
       if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
       this.audio.stopAll();
+      this.audio.back();
       this.refreshTitle();
       this.showScreen('title');
     }
@@ -916,6 +950,7 @@
       // stars
       const stars = $('results-stars');
       stars.textContent = res.stars ? '★'.repeat(res.stars) + '☆'.repeat(3 - res.stars) : '';
+      for (let i = 0; i < res.stars; i++) this.audio.star(0.4 + i * 0.35);
       // breakdown — component scores, not one unexplained total
       const box = $('results-breakdown');
       box.innerHTML = '';
@@ -946,7 +981,7 @@
         !(this.game.mode === 'journey' && res.won && this.game.content && this.game.content.number < 40));
       $('btn-results-retry').textContent = this.game.mode === 'tutorial' ? 'Next lesson' : 'Play again';
       this._openOverlay('overlay-results');
-      if (res.unlocked.length) this._toast('Achievement unlocked: ' + res.unlocked[0].name);
+      if (res.unlocked.length) { this.audio.success(); this._toast('Achievement unlocked: ' + res.unlocked[0].name); }
     }
 
     _showTutorialComplete(def) {
@@ -975,6 +1010,7 @@
       const t = $('overlay-achievement');
       t.textContent = text;
       t.classList.remove('hidden');
+      this.audio.toast();
       clearTimeout(this._toastTimer);
       this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
       this._announce(text);
@@ -1111,6 +1147,7 @@
           e.preventDefault();
           const dir = code === B.navLeft ? -1 : 1;
           const next = idx < 0 ? 0 : Math.min(hand.length - 1, Math.max(0, idx + dir));
+          this.audio.scrollTick();
           this.game.selectTile(hand[next]);
           // move DOM focus to match
           const li = $('hand-list').children[next];
@@ -1165,6 +1202,7 @@
 
       const nav = (dir) => {
         const next = idx < 0 ? 0 : Math.min(hand.length - 1, Math.max(0, idx + dir));
+        this.audio.scrollTick();
         this.game.selectTile(hand[next]);
       };
       if (pressed(14) || (axisX < -0.6 && now - this._gamepad.axisAt > 220)) { nav(-1); this._gamepad.axisAt = now; }

@@ -206,6 +206,7 @@
       if (this.state.phase !== 'active') return;
       const cur = this.state.players[this.state.turn];
       if (!cur || cur.kind !== 'ai') return;
+      if (this.audio) this.audio.opponentTurn();
       const scripted = this._tutorial && cur.difficulty === 'scripted';
       const delay = scripted ? 650 : (this.mode === 'practice' ? 550 : 750) + this._aiRng.next() * 400;
       this._aiTimer = setTimeout(() => this._runOneAI(), delay);
@@ -319,10 +320,12 @@
         if (this.mode === 'journey' && won && this.content) {
           const stars = this._starsFor(st, me);
           const prev = this.store.progress.journey[this.content.id] || { stars: 0, bestScore: 0 };
+          const hadEntry = !!this.store.progress.journey[this.content.id];
           this.store.progress.journey[this.content.id] = {
             stars: Math.max(prev.stars, stars),
             bestScore: Math.max(prev.bestScore, st.players[me].score),
           };
+          if (this.audio && hadEntry && st.players[me].score > prev.bestScore) this.audio.newRecord();
           this.store.progress.masteryXP += stars;
           if (won && this.content.mastery && this.content.number >= 32) {
             const u = P.unlock(this.store, 'milestone_hard'); if (u) unlocked.push(u);
@@ -408,7 +411,7 @@
       this.selectedTile = null;
       this._emitView(true);
       this._announce('Undone. Your turn.');
-      if (this.audio) this.audio.ack();
+      if (this.audio) this.audio.undoMove();
       return { ok: true };
     }
 

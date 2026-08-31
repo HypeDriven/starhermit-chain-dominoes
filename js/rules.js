@@ -180,7 +180,7 @@
     if (cfg.hands) state.hands = cfg.hands.map(h => h.slice());
     state.boneyard = (cfg.boneyard || []).slice();
     state.chain = [];
-    if (cfg.chain) {
+    if (cfg.chain && cfg.chain.length) {
       cfg.chain.forEach(c => state.chain.push({ id: c.id, left: c.left, right: c.right }));
       state.leftEnd = state.chain[0].left;
       state.rightEnd = state.chain[state.chain.length - 1].right;
@@ -341,6 +341,7 @@
       const canPlay = state.hands[p].some(tid => playableEnds(state, tid).length > 0);
       if (!canPlay) { state.players[p].passes += 1; state.passesInRow += 1; event.autoPass = true; checkBlockedOrAdvance(state); }
     }
+    if (state.phase !== 'active') event.roundOver = true;
     return event;
   }
 

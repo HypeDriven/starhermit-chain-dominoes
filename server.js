@@ -94,8 +94,12 @@
     if (!commandId || typeof commandId !== 'string' || commandId.length > 64)
       return { ok: false, reason: 'bad-command-id' };
     if (session.seenCommands.has(commandId)) return { ok: true, duplicate: true }; // idempotent
-    if (cmd && typeof cmd === 'object' && JSON.stringify(cmd).length > 512)
-      return { ok: false, reason: 'payload-too-large' };
+    if (cmd && typeof cmd === 'object') {
+      let size;
+      try { size = JSON.stringify(cmd).length; }
+      catch (e) { return { ok: false, reason: 'malformed-command' }; } // e.g. circular reference
+      if (size > 512) return { ok: false, reason: 'payload-too-large' };
+    }
 
     if (cmd && cmd.type === 'next-round') {
       const r = R.nextRound(session.state);
@@ -145,7 +149,20 @@
     if (!session || session.ended) return null;
     const now = nowMs || Date.now();
     if (now < session.deadlineAt) return null;
-    if (session.state.phase !== 'active') { session.deadlineAt = now + session.turnDeadlineMs; return null; }
+    if (session.state.phase !== 'active') {
+      // Past the deadline outside active play (e.g. parked at round-over):
+      // resolve the abandoned session instead of pushing the deadline on.
+      const st = session.state;
+      session.ended = {
+        reason: 'timeout',
+        terminal: st.terminal || {
+          reason: 'abandoned', winner: -1, ranking: R.rankPlayers(st),
+          scores: st.players.map(p => p.score), rounds: st.round, ticks: st.tick, tied: false,
+        },
+        at: now,
+      };
+      return { sessionId: session.id, ended: session.ended };
+    }
     const st = session.state;
     const offender = st.turn;
     st.phase = 'match-over';
