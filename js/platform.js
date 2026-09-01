@@ -221,8 +221,10 @@
         if (!res.ok) return;
         const body = await res.json();
         const t1 = Date.now();
-        if (typeof body.now === 'number') {
-          this._timeOffset = body.now - (t0 + (t1 - t0) / 2);
+        // Hosts expose the epoch under different keys (`now`, `serverTime`, `epochMs`).
+        const serverMs = Number(body.now ?? body.serverTime ?? body.epochMs);
+        if (Number.isFinite(serverMs)) {
+          this._timeOffset = serverMs - (t0 + (t1 - t0) / 2);
           if (probe && !this.present) this.present = true;
         }
       } catch (e) { /* local clock */ }

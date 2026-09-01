@@ -283,7 +283,10 @@
   <div style="padding:2rem;font-family:sans-serif">Chain Dominoes needs JavaScript to run. Please enable it and reload.</div>
 </noscript>
 
-<script src="vendor/three.min.js" defer></script>
+<script type="module">
+  import * as THREE from './vendor/three.module.min.js';
+  window.THREE = THREE;
+</script>
 <script src="js/rules.js" defer></script>
 <script src="js/content.js" defer></script>
 <script src="js/ai.js" defer></script>
