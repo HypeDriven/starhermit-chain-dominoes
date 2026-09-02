@@ -435,8 +435,9 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent);
 /* Portrait mobile */
 @media (max-width: 600px) and (orientation: portrait) {
   .screen-game { grid-template-columns: 1fr; grid-template-areas: "status" "main" "tray"; }
-  .hud-objective { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; }
-  .hud-scores { overflow-x: auto; max-width: 52vw; scrollbar-width: none; }
+  #game-statusbar { min-width: 0; gap: 8px; }
+  .hud-objective { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; min-width: 0; }
+  .hud-scores { overflow-x: auto; max-width: 52vw; scrollbar-width: none; min-width: 0; flex-shrink: 1; }
   .hud-scores .score-chip { flex-shrink: 0; }
   .rail { position: absolute; left: 0; right: 0; bottom: 0; top: auto; max-height: 55%;
     border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform 0.2s; box-shadow: 0 -12px 40px var(--shadow); }

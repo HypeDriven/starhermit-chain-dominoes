@@ -207,11 +207,9 @@
         this.syncTime();
         return true;
       }
-      // Same-origin probe: if /api/v1/time answers, we are hosted.
-      if (root.fetch && typeof root.location === 'object' && root.location &&
-          (root.location.protocol === 'http:' || root.location.protocol === 'https:')) {
-        this.syncTime(true);
-      }
+      // No launch token: assume static hosting. No probe request — a
+      // speculative /api/v1/time fetch 404s (and logs a console error)
+      // on any plain static server.
       return false;
     },
     async syncTime(probe) {

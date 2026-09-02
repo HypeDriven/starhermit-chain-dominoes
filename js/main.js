@@ -25,8 +25,10 @@
 
     // First-run: default telemetry consent stays off until the player opts in.
 
-    // Warm the daily widget with server-synchronized time.
-    P.host.syncTime().then(() => ui.refreshTitle()).catch(() => {});
+    // Warm the daily widget with server-synchronized time (hosted only).
+    if (P.host.present) {
+      P.host.syncTime().then(() => ui.refreshTitle()).catch(() => {});
+    }
   }
 
   if (document.readyState === 'loading') {
