@@ -7,9 +7,9 @@ alongside the game's own unit tests and browser integration test.
 
 | Check | Result |
 | --- | --- |
-| `npm test` (`test/rules.test.js`, `test/content.test.js`, `test/server.test.js`) | 92 + 61 + 21 = 174 pass, 0 fail |
-| `node --check` on all modules | clean (`js/*.js`, `server.js`, `test/*.js`) |
-| `npm run test:browser` (`test/browser.test.js`, headless Chrome via raw CDP) | PASS — 38 pass, 0 fail |
+| `npm test` (`tests/rules.test.js`, `tests/content.test.js`, `tests/server.test.js`) | 92 + 61 + 21 = 174 pass, 0 fail |
+| `node --check` on all modules | clean (`js/*.js`, `server.js`, `tests/*.js`) |
+| `npm run test:browser` (`tests/browser.test.js`, headless Chrome via raw CDP) | PASS — 38 pass, 0 fail |
 
 Note: this game has no HTTP `server.js` — `server.js` is the hosted Game Script (createSession /
 submitCommand / getSnapshot / tick / endSession). The browser test starts its own static server on its
@@ -126,7 +126,7 @@ later ticks return `null` (session ended).
   `endRound(state, 'blocked', null)`. Unlike `doPass`, it never sets `event.roundOver = true`, so a caller
   that keys off that flag misses the transition.
 - **Why unconfirmed:** nothing in `js/` reads `event.roundOver` — the only consumer is
-  `test/rules.test.js:142`. Callers can and do read `state.phase` instead, so I could not show a
+  `tests/rules.test.js:142`. Callers can and do read `state.phase` instead, so I could not show a
   user-visible consequence.
 - **Fix 2026-08-26:** the inconsistency with `doPass` was real and the fix is one line —
   `js/rules.js:344` now sets `event.roundOver = true` when `checkBlockedOrAdvance` ended the round
@@ -164,7 +164,7 @@ later ticks return `null` (session ended).
 ## Not tested
 
 - Hosted multi-client play beyond the single-process Game Script contract exercised by
-  `test/server.test.js`; there is no transport layer in this repo to drive two real clients.
+  `tests/server.test.js`; there is no transport layer in this repo to drive two real clients.
 - Audio output (`js/audio.js`).
 - Reconnect/turn-deadline behaviour under real network conditions (`tick`/`deadlineAt` are exercised
   synchronously by the unit tests only).
@@ -172,5 +172,5 @@ later ticks return `null` (session ended).
 ## Runtime artefacts
 
 Running the shipped `npm run test:browser` overwrote the checked-in screenshots
-`test/shots/daily.png`, `game-start.png`, `pause.png`, `results.png` and `tutorial.png` — that is what
+`tests/shots/daily.png`, `game-start.png`, `pause.png`, `results.png` and `tutorial.png` — that is what
 the test is written to do. No source file was modified.

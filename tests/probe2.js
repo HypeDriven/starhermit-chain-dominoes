@@ -56,7 +56,7 @@ function httpJson(path) {
     return 'stuck';
   })()`);
   console.log('fallback playable:', fb);
-  await shot('test/shots/fallback.png');
+  await shot('tests/shots/fallback.png');
   await ev('__CD_UI.leaveMatch()');
   await sleep(300);
 

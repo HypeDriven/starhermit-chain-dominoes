@@ -94,6 +94,6 @@ function httpJson(path) {
     return Array.from(px).join(',');
   })()`));
   const shot = await send('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync('test/shots/probe.png', Buffer.from(shot.result.data, 'base64'));
+  fs.writeFileSync('tests/shots/probe.png', Buffer.from(shot.result.data, 'base64'));
   chrome.kill();
 })().catch(e => { console.error(e); process.exit(1); });

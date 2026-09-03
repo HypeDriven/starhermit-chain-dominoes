@@ -114,7 +114,7 @@ async function main() {
   await sleep(300);
   ok(await cdp.evaljs('document.querySelectorAll("#journey-list .journey-item").length') === 40, 'journey list shows 40 stages');
   ok(await cdp.evaljs('document.querySelectorAll("#journey-list .journey-item:not(.locked)").length') === 1, 'only stage 1 unlocked initially');
-  await cdp.shot('test/shots/journey.png');
+  await cdp.shot('tests/shots/journey.png');
 
   /* ---- start stage 1 via list click ---- */
   await cdp.evaljs('document.querySelector("#journey-list .journey-item").click()');
@@ -123,7 +123,7 @@ async function main() {
   ok(await cdp.evaljs('!!__CD_UI.game && !!__CD_UI.game.state'), 'session created');
   const rendererOk = await cdp.evaljs('!!__CD_UI.renderer');
   ok(rendererOk, '3D renderer attached');
-  await cdp.shot('test/shots/game-start.png');
+  await cdp.shot('tests/shots/game-start.png');
 
   /* ---- play moves through the real DOM controls until round/match ends ---- */
   const playOneHumanTurn = async () => {
@@ -175,7 +175,7 @@ async function main() {
   }
   ok(moves > 3, 'human played multiple real moves through DOM controls (' + moves + ')');
   ok(resultsSeen, 'match reached results overlay');
-  await cdp.shot('test/shots/results.png');
+  await cdp.shot('tests/shots/results.png');
   const breakdown = await cdp.evaljs('document.querySelectorAll("#results-breakdown .row").length');
   ok(breakdown >= 3, 'results breakdown has component rows (' + breakdown + ')');
   const stars = await cdp.evaljs('document.getElementById("results-stars").textContent.length');
@@ -193,7 +193,7 @@ async function main() {
   await cdp.evaljs('__CD_UI.pauseGame()');
   await sleep(200);
   ok(await cdp.evaljs('!document.getElementById("overlay-pause").classList.contains("hidden")'), 'pause overlay opens');
-  await cdp.shot('test/shots/pause.png');
+  await cdp.shot('tests/shots/pause.png');
   await cdp.evaljs('__CD_UI.resumeGame()');
   await sleep(200);
   ok(await cdp.evaljs('document.getElementById("overlay-pause").classList.contains("hidden")'), 'resume closes overlay');
@@ -233,7 +233,7 @@ async function main() {
   await cdp.evaljs('document.getElementById("set-contrast").click()');
   ok(await cdp.evaljs('document.body.classList.contains("high-contrast")'), 'high contrast applies');
   await cdp.evaljs('document.getElementById("set-contrast").click()');
-  await cdp.shot('test/shots/settings.png');
+  await cdp.shot('tests/shots/settings.png');
 
   /* ---- tutorial flow ---- */
   await cdp.evaljs('__CD_UI._nav("learn")');
@@ -278,7 +278,7 @@ async function main() {
   })()`);
   ok(tDone === 'complete', 'tutorial lesson completes end-to-end (' + tDone + ')');
   ok(await cdp.evaljs('__CD_UI.store.progress.tutorials.includes("t1-matching")'), 'tutorial completion persisted');
-  await cdp.shot('test/shots/tutorial.png');
+  await cdp.shot('tests/shots/tutorial.png');
 
   /* ---- daily setup ---- */
   await cdp.evaljs('__CD_UI.leaveMatch()');
@@ -287,7 +287,7 @@ async function main() {
   await sleep(400);
   ok(await cdp.evaljs('document.querySelector("#screen-setup").classList.contains("active")'), 'daily setup opens');
   ok(await cdp.evaljs('document.getElementById("setup-heading").textContent.includes("Daily")'), 'daily named with UTC date');
-  await cdp.shot('test/shots/daily.png');
+  await cdp.shot('tests/shots/daily.png');
 
   /* ---- help + keyboard bindings card ---- */
   await cdp.evaljs('__CD_UI._nav("help")');
@@ -308,7 +308,7 @@ async function main() {
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await cdp.evaljs('__CD_UI._nav("title")');
   await sleep(500);
-  await cdp.shot('test/shots/mobile-title.png');
+  await cdp.shot('tests/shots/mobile-title.png');
   const noHoriz = await cdp.evaljs('document.documentElement.scrollWidth <= 391');
   ok(noHoriz, 'no horizontal overflow at 390px portrait');
 

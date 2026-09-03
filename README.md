@@ -51,15 +51,15 @@ Everything is local and self-contained (Three.js is vendored in
 ## Tests
 
 ```
-node test/rules.test.js     # rules engine: legality, scoring, determinism, fuzz
-node test/content.test.js   # offline content validator + AI-vs-AI simulations
-node test/server.test.js    # authoritative session script
-node test/browser.test.js   # end-to-end UI drive via headless Chrome (CDP)
+node tests/rules.test.js     # rules engine: legality, scoring, determinism, fuzz
+node tests/content.test.js   # offline content validator + AI-vs-AI simulations
+node tests/server.test.js    # authoritative session script
+node tests/browser.test.js   # end-to-end UI drive via headless Chrome (CDP)
 ```
 
 The browser test serves the game locally (port 8571) and drives headless
 Chrome: real clicks, real moves, pause/resume/undo/skip, tutorial flow,
-screenshots in `test/shots/`.
+screenshots in `tests/shots/`.
 
 ## Notes
 

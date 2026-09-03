@@ -5,7 +5,7 @@
   "description": "Chain Dominoes — café-tabletop tile game (browser, self-contained).",
   "scripts": {
     "start": "python3 -m http.server 8571",
-    "test": "node test/rules.test.js && node test/content.test.js && node test/server.test.js",
-    "test:browser": "node test/browser.test.js"
+    "test": "node tests/rules.test.js && node tests/content.test.js && node tests/server.test.js",
+    "test:browser": "node tests/browser.test.js"
   }
 }

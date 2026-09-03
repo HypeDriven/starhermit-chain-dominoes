@@ -1,7 +1,7 @@
 /* Chain Dominoes — versioned content: tutorials, journey stages, challenges,
  * daily generator, themes. Pure data + small pure functions; no DOM.
  * Content schema: { id, version, seed, kind, ruleset, players, goals, par,
- * tutorialFlags, theme, setup? } — validated offline by test/content.test.js.
+ * tutorialFlags, theme, setup? } — validated offline by tests/content.test.js.
  */
 (function (root, factory) {
   const api = factory(typeof module === 'object' && module.exports ? require('../js/rules.js') : root.ChainDominoesRules);

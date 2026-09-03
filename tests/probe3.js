@@ -55,18 +55,18 @@ function httpJson(path, method) {
     }
   })()`);
   await sleep(1200);
-  await shot('test/shots/theme-midnight-4p.png');
+  await shot('tests/shots/theme-midnight-4p.png');
 
   // portrait mobile
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await sleep(800);
-  await shot('test/shots/mobile-portrait-game.png');
+  await shot('tests/shots/mobile-portrait-game.png');
   console.log('portrait overflow:', await ev('document.documentElement.scrollWidth'));
 
   // landscape mobile
   await send('Emulation.setDeviceMetricsOverride', { width: 844, height: 390, deviceScaleFactor: 2, mobile: true });
   await sleep(800);
-  await shot('test/shots/mobile-landscape-game.png');
+  await shot('tests/shots/mobile-landscape-game.png');
   console.log('landscape sizes ok');
   chrome.kill();
 })().catch(e => { console.error(e); process.exit(1); });
