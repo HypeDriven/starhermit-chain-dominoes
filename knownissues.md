@@ -19,6 +19,11 @@ assigned port range; it was run as shipped.
 Re-run 2026-08-26 after the fixes below and the sfx/ wiring: `npm test` 174 pass / 0 fail,
 `npm run test:browser` 38 pass / 0 fail, `node --check` clean on all changed files.
 
+Re-run 2026-09-05 (all five items below confirmed still fixed against the current source via the
+Game Script API and a scripted two-player session): `npm test` 174 pass / 0 fail (92 + 61 + 21),
+`npm run test:e2e` PASS — chain-dominoes playable end-to-end on desktop and mobile, no page errors,
+`node --check` clean on all changed files.
+
 ## Confirmed defects
 
 Defect 2 was reproduced by driving a real two-player session through the shipped Game Script API.
