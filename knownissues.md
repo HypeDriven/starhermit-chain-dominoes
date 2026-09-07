@@ -24,6 +24,54 @@ Game Script API and a scripted two-player session): `npm test` 174 pass / 0 fail
 `npm run test:e2e` PASS — chain-dominoes playable end-to-end on desktop and mobile, no page errors,
 `node --check` clean on all changed files.
 
+## Review pass 2026-09-07 (Opus 5)
+
+`npm test` 174 pass / 0 fail · `npm run test:browser` 38 pass / 0 fail ·
+`npm run test:e2e` PASS (24 steps, desktop + mobile, no page errors) ·
+`node --check` clean on every changed module. The e2e suite gained coverage for
+the Learn → results → next-lesson chain, the practice setup screen, and
+pass-and-play. `LICENSE.md` (PolyForm Noncommercial 1.0.0) added as the root
+instructions require.
+
+Fixed this pass:
+
+1. **Pass-and-play was a hard deadlock.** `Session._humanIndex()` always returned
+   the *first* human seat, so once the second human was on turn every command
+   came back `not-your-turn` and no AI existed to move — the match could not
+   continue. The session now tracks `hotseat` (2+ human seats) and the local
+   seat follows the turn; the hand tray, listbox label and turn indicator name
+   the seat, and each hand-over is announced to the live region.
+2. **Pass-and-play was unreachable offline.** `refreshTitle()` hid `#btn-hosted`
+   whenever no host shell was present, even though that screen is the only entry
+   to pass-and-play and its own copy advertises the offline path. The entry is
+   now always shown, labelled "Pass & Play" offline and "Hosted Play" hosted.
+3. **The results "Play again" button was destroyed by finishing a lesson.**
+   `_showTutorialComplete()` replaced `#btn-results-retry` with `cloneNode`,
+   discarding the listener bound in `_bindStatic()`; every later match's
+   "Play again" then ran the stale lesson handler. Replaced with a
+   `_resultsRetryOverride` dispatch that is cleared by `_showResults()`.
+4. **The Practice start button rendered blank.** `_setupPractice()` rewired it
+   with a shallow `cloneNode()`, which drops the "Take a seat" text node.
+5. **AI timers could stack.** `_maybeRunAI()` scheduled without clearing a
+   pending timer, so `_continueSaved()` (which starts a match and then swaps in
+   the restored state) armed two turns. It now clears first.
+6. **Undo left the replay envelope ahead of the state.** Undo snapshots now
+   carry the replay/hash lengths and rewind them, and `continueNextRound()`
+   records the `next-round` marker `R.replay()` expects — without it an envelope
+   stopped replaying at the end of round one.
+7. **Escape did the wrong thing over the round/results overlays.** The guard
+   `!el.classList.contains('hidden') === false` meant Escape resumed play while
+   a decision overlay was open. It now only closes the pause overlay.
+8. Smaller fixes: unbalanced parenthesis in the end-cap `aria-label`; hand `<li>`
+   elements given `role="presentation"` so the `listbox` → `option` relationship
+   is direct; removed the duplicate inline data-URI `<link rel="icon">` that
+   overrode the authored `favicon.svg`, and pointed `apple-touch-icon` at
+   `icon.png`.
+
+Not addressed: there is no text localization layer, so the nine languages in
+`agents/localization.md` are unsupported. That is a content project (UI strings
+plus 40 stage names, 8 challenges and 6 lessons × 9 locales), not a review fix.
+
 ## Confirmed defects
 
 Defect 2 was reproduced by driving a real two-player session through the shipped Game Script API.

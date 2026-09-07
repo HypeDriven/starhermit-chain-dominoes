@@ -70,6 +70,7 @@
       this._hbTimer = null;
       this._captionTimer = null;
       this._bound = false;
+      this._resultsRetryOverride = null;
     }
 
     init() {
@@ -127,7 +128,14 @@
       on('btn-pause-settings', () => { this._closeOverlay('overlay-pause'); this._nav('settings'); });
       on('btn-pause-help', () => { this._closeOverlay('overlay-pause'); this._nav('help'); });
       on('btn-next-round', () => { this._closeOverlay('overlay-round'); if (this.game) this.game.continueNextRound(); this.audio.roundIntro(); });
-      on('btn-results-retry', () => this._retry());
+      // The results screen is reused by lessons, which need a different
+      // "again" action. Dispatch through an override instead of replacing the
+      // button — a replaced node loses this listener for every later match.
+      on('btn-results-retry', () => {
+        const override = this._resultsRetryOverride;
+        if (override) { this._resultsRetryOverride = null; override(); return; }
+        this._retry();
+      });
       on('btn-results-next', () => this._nextStage());
       on('btn-results-menu', () => { this._closeOverlay('overlay-results'); this._toTitle(); });
       on('btn-draw', () => this._doAction({ type: 'draw' }));
@@ -314,7 +322,11 @@
       $('daily-badge').classList.toggle('hidden', !this.store.progress.daily[daily.dateKey]);
       const hasSave = !!this.store.doc.savedMatch;
       $('btn-continue').classList.toggle('hidden', !hasSave);
-      $('btn-hosted').classList.toggle('hidden', !P().host.present);
+      // Always reachable: offline this screen still offers pass-and-play,
+      // which was otherwise unreachable because the entry was hidden.
+      const hosted = $('btn-hosted');
+      hosted.classList.remove('hidden');
+      hosted.textContent = P().host.present ? 'Hosted Play' : 'Pass & Play';
       $('host-status').textContent = P().host.present
         ? 'Connected to StarHermit · cloud saves on'
         : 'Offline mode · progress stays on this device';
@@ -351,6 +363,7 @@
       panel.appendChild(grid);
       if (extraHtml) panel.appendChild(extraHtml);
       const start = el('button', 'btn btn-primary btn-big', 'Take a seat');
+      start.id = 'btn-take-seat';
       start.addEventListener('click', () => this._startMatch(mode, content, config));
       panel.appendChild(start);
       body.appendChild(panel);
@@ -405,7 +418,7 @@
       };
       [selPlayers, selDiff, selTarget, selDraw].forEach(s => s.addEventListener('change', update));
       update();
-      const newStart = start.cloneNode();
+      const newStart = start.cloneNode(true); // deep: a shallow clone drops the label text
       start.replaceWith(newStart);
       newStart.addEventListener('click', () => {
         const cfg = C().practiceConfig({
@@ -452,15 +465,16 @@
 
     _setupHosted() {
       const body = $('setup-body');
-      $('setup-heading').textContent = 'Hosted Play';
+      $('setup-heading').textContent = P().host.present ? 'Hosted Play' : 'Pass & Play';
       body.innerHTML = '';
       const panel = el('section', 'panel');
       panel.appendChild(el('h3', '', 'Play with friends'));
       panel.appendChild(el('p', '', P().host.present
         ? 'Create a private invitation or join public matchmaking. Hosted sessions are authoritative: the server validates every move.'
         : 'Hosted play needs the StarHermit shell. Offline, you can still pass-and-play or face the AI.'));
-      const mk = (label, fn) => {
+      const mk = (label, fn, id) => {
         const b = el('button', 'btn', label);
+        if (id) b.id = id;
         b.addEventListener('click', fn);
         panel.appendChild(b);
       };
@@ -472,7 +486,7 @@
         const cfg = { seed: 'hotseat:' + Date.now(), ruleset: { targetScore: 100 }, players: [
           { id: 'p1', name: 'Player 1', kind: 'human' }, { id: 'p2', name: 'Player 2', kind: 'human' }] };
         this._startMatch('practice', { id: 'hotseat', name: 'Pass and Play' }, cfg);
-      });
+      }, 'btn-hotseat');
       body.appendChild(panel);
       this.showScreen('setup');
     }
@@ -712,7 +726,9 @@
         (view.targetScore > 0 ? ' · target ' + view.targetScore : ' · single match to best score');
       $('rail-boneyard').textContent = 'Boneyard: ' + view.boneyardCount + ' tile' + (view.boneyardCount === 1 ? '' : 's');
       const ti = $('turn-indicator');
-      ti.textContent = view.phase === 'active' ? (view.myTurn ? 'Your turn' : view.turnName + '’s turn') : 'Round over';
+      ti.textContent = view.phase === 'active'
+        ? ((view.myTurn && !view.hotseat) ? 'Your turn' : view.turnName + '’s turn')
+        : 'Round over';
       ti.classList.toggle('your-turn', !!view.myTurn);
 
       // action buttons
@@ -746,7 +762,7 @@
         btn.classList.toggle('hidden', !legal);
         if (legal) {
           btn.textContent = val === null ? '●' : String(val);
-          btn.setAttribute('aria-label', 'Play selected tile on ' + end + ' end (' + (val === null ? 'open table' : val + ')'));
+          btn.setAttribute('aria-label', 'Play selected tile on ' + end + ' end (' + (val === null ? 'open table' : val) + ')');
         }
       }
 
@@ -756,6 +772,7 @@
       view.myHand.forEach(id => {
         const [a, b] = view.tileFaces[id];
         const li = el('li');
+        li.setAttribute('role', 'presentation'); // keep listbox → option direct
         const playable = !!view.playableTiles[id];
         const d = dominoEl(a, b, {
           numbers: this.store.settings.showNumbers,
@@ -770,7 +787,10 @@
         li.appendChild(d);
         hand.appendChild(li);
       });
-      $('hand-label').textContent = 'Your hand (' + view.myHand.length + ')';
+      const handOwner = view.hotseat ? view.myName + '’s hand' : 'Your hand';
+      $('hand-label').textContent = handOwner + ' (' + view.myHand.length + ')';
+      $('hand-list').setAttribute('aria-label', handOwner);
+      $('hand-tray').setAttribute('aria-label', handOwner);
 
       // tutorial banner
       if (view.tutorial) {
@@ -980,6 +1000,7 @@
       $('btn-results-next').classList.toggle('hidden',
         !(this.game.mode === 'journey' && res.won && this.game.content && this.game.content.number < 40));
       $('btn-results-retry').textContent = this.game.mode === 'tutorial' ? 'Next lesson' : 'Play again';
+      this._resultsRetryOverride = null;
       this._openOverlay('overlay-results');
       if (res.unlocked.length) { this.audio.success(); this._toast('Achievement unlocked: ' + res.unlocked[0].name); }
     }
@@ -996,13 +1017,10 @@
       $('results-meta').textContent = 'Lessons completed: ' + this.store.progress.tutorials.length + '/6';
       $('btn-results-next').classList.add('hidden');
       $('btn-results-retry').textContent = next ? 'Next lesson' : 'Journey';
-      const retryBtn = $('btn-results-retry');
-      const clone = retryBtn.cloneNode(true);
-      retryBtn.replaceWith(clone);
-      clone.addEventListener('click', () => {
+      this._resultsRetryOverride = () => {
         this._closeOverlay('overlay-results');
         if (next) this._startTutorial(next); else this._nav('journey');
-      });
+      };
       this._openOverlay('overlay-results');
     }
 
@@ -1126,7 +1144,12 @@
       window.addEventListener('keydown', (e) => {
         if (this.screen !== 'game' || !this.game) return;
         if (document.querySelector('.overlay:not(.hidden)')) {
-          if (e.key === 'Escape' && !$('overlay-results').classList.contains('hidden') === false) this.resumeGame();
+          // Escape only closes the pause overlay; the round and results
+          // overlays are decision points and need an explicit choice.
+          if (e.key === 'Escape' && !$('overlay-pause').classList.contains('hidden')) {
+            e.preventDefault();
+            this.resumeGame();
+          }
           return;
         }
         const B = this.store.settings.bindings;

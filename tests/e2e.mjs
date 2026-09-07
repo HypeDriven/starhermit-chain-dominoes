@@ -58,7 +58,7 @@ async function playOneHumanTurn(page, tag) {
     if (!g || !g.state) return { phase: 'no-game' };
     const s = g.state;
     if (s.phase !== 'active') return { phase: s.phase };
-    const me = s.players.findIndex(p => p.kind === 'human');
+    const me = g._humanIndex(); // follows the seat in pass-and-play
     if (s.turn !== me) return { phase: 'ai-turn' };
     const acts = window.ChainDominoesRules.legalActions(s, me);
     const play = acts.find(a => a.type === 'play');
@@ -80,6 +80,40 @@ async function playOneHumanTurn(page, tag) {
   return 'none';
 }
 
+// One step of a Learn lesson, driven through the same controls a player uses.
+async function playLessonStep(page) {
+  const st = await page.evaluate(() => {
+    const g = window.__CD_UI && window.__CD_UI.game;
+    if (!g || !g.state) return { kind: 'no-game' };
+    if (!g._tutorial) return { kind: 'done' };
+    const step = g._tutorial.def.steps[g._tutorial.stepIdx];
+    if (!step) return { kind: 'done' };
+    const w = step.expect;
+    if (w.type === 'opponent' || w.type === 'opponent-pass') return { kind: 'wait' };
+    const me = g._humanIndex();
+    if (g.state.turn !== me) return { kind: 'wait' };
+    if (w.type === 'play') {
+      const a = window.ChainDominoesRules.legalActions(g.state, me).find(x =>
+        x.type === 'play' &&
+        (w.tileId === undefined || x.tileId === w.tileId) &&
+        (w.end === undefined || x.end === w.end));
+      if (!a) return { kind: 'wait' };
+      return { kind: 'play', idx: g.state.hands[me].indexOf(a.tileId), end: a.end };
+    }
+    return { kind: w.type };
+  });
+  if (st.kind === 'play') {
+    await page.locator('#hand-list .domino').nth(st.idx).click();
+    await page.waitForSelector(`#btn-end-${st.end}:not(.hidden)`, { timeout: 4000 });
+    await page.click(`#btn-end-${st.end}`);
+  } else if (st.kind === 'draw') {
+    await page.click('#btn-draw');
+  } else if (st.kind === 'pass') {
+    await page.click('#btn-pass');
+  }
+  return st.kind;
+}
+
 async function runPass(label, viewport, hasTouch) {
   const errors = [];
   const browser = await chromium.launch({
@@ -99,6 +133,76 @@ async function runPass(label, viewport, hasTouch) {
       await page.waitForSelector('#screen-title.active', { timeout: 10000 });
       if (!(await page.locator('#btn-quick-play').isVisible())) throw new Error('Play button not visible');
       await page.screenshot({ path: SHOT('title') });
+    });
+
+    await step(`[${label}] lesson 1 completes and chains into lesson 2`, async () => {
+      await page.click('#btn-learn');
+      await page.waitForSelector('#screen-learn.active');
+      await page.locator('#tutorial-list .card-go').first().click();
+      await page.waitForSelector('#screen-game.active', { timeout: 15000 });
+      await page.waitForSelector('#tutorial-banner:not(.hidden)', { timeout: 8000 });
+      for (let i = 0; i < 40; i++) {
+        if (await page.locator('#overlay-results:not(.hidden)').count()) break;
+        const k = await playLessonStep(page);
+        if (k === 'no-game') throw new Error('lesson session disappeared');
+        await sleep(300);
+      }
+      await page.waitForSelector('#overlay-results:not(.hidden)', { timeout: 8000 });
+      const heading = await page.locator('#results-heading').textContent();
+      if (!/complete/i.test(heading)) throw new Error(`lesson did not complete: "${heading}"`);
+      await page.screenshot({ path: SHOT('lesson-complete') });
+      // The lesson reuses the results screen; "Next lesson" must start lesson 2
+      // without permanently hijacking the button for later matches.
+      const label2 = await page.locator('#btn-results-retry').textContent();
+      if (label2.trim() !== 'Next lesson') throw new Error(`expected "Next lesson", got "${label2}"`);
+      await page.click('#btn-results-retry');
+      await page.waitForFunction(
+        () => window.__CD_UI.game && window.__CD_UI.game.content?.id === 't2-drawing',
+        null, { timeout: 10000 });
+      await page.click('#btn-tutorial-quit');
+      await page.waitForSelector('#screen-title.active', { timeout: 8000 });
+    });
+
+    await step(`[${label}] practice setup: start button is labelled and starts a match`, async () => {
+      await page.click('#btn-practice');
+      await page.waitForSelector('#screen-setup.active');
+      const txt = (await page.locator('#btn-take-seat').textContent()).trim();
+      if (!txt) throw new Error('practice start button has no label');
+      const facts = await page.locator('#setup-body .fact').count();
+      if (facts < 4) throw new Error(`practice fact grid is empty (${facts} facts)`);
+      await page.selectOption('#setup-body select >> nth=0', '3');   // 3 players
+      await page.click('#btn-take-seat');
+      await page.waitForSelector('#screen-game.active', { timeout: 15000 });
+      const n = await page.evaluate(() => window.__CD_UI.game.state.players.length);
+      if (n !== 3) throw new Error(`expected a 3-player practice table, got ${n}`);
+      await page.screenshot({ path: SHOT('practice') });
+      await page.click('#btn-pause');
+      await page.waitForSelector('#overlay-pause:not(.hidden)');
+      await page.click('#btn-leave-match');
+      await page.waitForSelector('#screen-title.active');
+    });
+
+    await step(`[${label}] pass-and-play passes the seat between two humans`, async () => {
+      await page.click('#btn-hosted');
+      await page.waitForSelector('#screen-setup.active');
+      await page.click('#btn-hotseat');
+      await page.waitForSelector('#screen-game.active', { timeout: 15000 });
+      const first = await page.evaluate(() => window.__CD_UI.game.state.turn);
+      const label0 = await page.locator('#hand-label').textContent();
+      if (!/Player \d/.test(label0)) throw new Error(`hotseat hand label not per-seat: "${label0}"`);
+      const r = await playOneHumanTurn(page, label);
+      if (r !== 'played' && r !== 'draw' && r !== 'pass')
+        throw new Error(`hotseat human could not act (got "${r}")`);
+      await page.waitForFunction(
+        (t) => window.__CD_UI.game.state.turn !== t, first, { timeout: 8000 });
+      const r2 = await playOneHumanTurn(page, label);
+      if (r2 !== 'played' && r2 !== 'draw' && r2 !== 'pass')
+        throw new Error(`second hotseat seat could not act (got "${r2}")`);
+      await page.screenshot({ path: SHOT('hotseat') });
+      await page.click('#btn-pause');
+      await page.waitForSelector('#overlay-pause:not(.hidden)');
+      await page.click('#btn-leave-match');
+      await page.waitForSelector('#screen-title.active');
     });
 
     await step(`[${label}] journey list (40 stages, stage 1 unlocked)`, async () => {

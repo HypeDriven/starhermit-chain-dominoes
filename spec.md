@@ -44,7 +44,7 @@ Win by emptying the hand; blocked rounds use lowest remaining pip total. Results
 - **Daily:** one shared seed and ruleset per UTC day, synchronized to platform time.
 - **Practice:** selectable difficulty, restart, undo where rules permit, and no effect on competitive rating.
 - **Challenge:** constrained goals such as move limits, speed targets, altered layouts, or restricted tools.
-- **Hosted play:** private invitations and appropriate public matching, with reconnect and authoritative results.
+- **Hosted play:** private invitations and appropriate public matching, with reconnect and authoritative results. Offline the same entry offers pass-and-play on one device: the seat, the visible hand, and control follow whoever is on turn.
 
 ### Difficulty and content generation
 

@@ -42,6 +42,7 @@
       this._aiRng = null;
       this.selectedTile = null;
       this._finished = false;
+      this.hotseat = false;            // 2+ humans sharing one device (pass-and-play)
     }
 
     /* ------------------------------------------------------------ start */
@@ -63,6 +64,7 @@
       } else {
         this.state = R.createMatch(config);
       }
+      this.hotseat = this.state.players.filter(p => p.kind === 'human').length > 1;
       this._aiRng = R.mulberry32(R.hashString(String(config ? config.seed : content.seed) + ':ai'));
       if (this.audio) this.audio.setSeedStream(R.makeStreams(config ? config.seed : 't').av);
 
@@ -191,17 +193,30 @@
       this._advanceTutorial(ev);
       if (this.state.phase === 'round-over') this._handleRoundOver();
       else if (this.state.phase === 'match-over') this._handleMatchOver();
-      else this._emitView();
+      else {
+        this._emitView();
+        // Pass-and-play: the seat changed hands, so say whose device turn it is.
+        if (this.hotseat) this._announce('Pass the device. ' + this.state.players[this.state.turn].name + ' to play.');
+      }
       this._maybeRunAI();
     }
 
     /* ---------------------------------------------------------- AI turns */
+    // The seat the local device is currently acting for. With a single human
+    // that is always the same seat; in pass-and-play the device belongs to
+    // whoever is on turn, so control (and the visible hand) follows the turn.
     _humanIndex() {
       if (!this.state) return -1;
+      if (this.hotseat) {
+        const cur = this.state.players[this.state.turn];
+        if (cur && cur.kind === 'human') return this.state.turn;
+      }
       return this.state.players.findIndex(p => p.kind === 'human');
     }
 
     _maybeRunAI() {
+      // Never stack timers: a second pending turn would let the AI move twice.
+      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
       if (!this.state || this._finished || this.paused) return;
       if (this.state.phase !== 'active') return;
       const cur = this.state.players[this.state.turn];
@@ -292,6 +307,9 @@
     continueNextRound() {
       if (!this.state || this.state.phase !== 'round-over') return;
       R.nextRound(this.state);
+      // Record the round advance: R.replay() understands 'next-round', and
+      // without it the envelope stops replaying at the end of round one.
+      this._replay.commands.push({ tick: this.state.tick, player: -1, cmd: { type: 'next-round' } });
       this._emitView(true);
       this._announce('Round ' + this.state.round + '. ' + this.state.players[this.state.turn].name + ' opens.');
       this._maybeRunAI();
@@ -390,7 +408,14 @@
     _pushUndo() {
       if (!this.options.undo) return;
       if (this.mode === 'daily' || this.mode === 'challenge') return; // ranked: no undo
-      this._undoStack.push(R.serialize(this.state));
+      // The replay length is captured with the snapshot so undo rewinds the
+      // replay envelope too — otherwise the log keeps commands that were
+      // rolled back and the envelope no longer replays to the final state.
+      this._undoStack.push({
+        json: R.serialize(this.state),
+        replayLen: this._replay.commands.length,
+        hashLen: this._replay.hashes.length,
+      });
       if (this._undoStack.length > 60) this._undoStack.shift();
     }
     canUndo() {
@@ -404,8 +429,10 @@
       // are replayed deterministically only if the human repeats choices —
       // simplest fair rule: roll back to the human's previous decision point).
       while (this._undoStack.length) {
-        const snap = R.deserialize(this._undoStack.pop());
-        this.state = snap;
+        const snap = this._undoStack.pop();
+        this.state = R.deserialize(snap.json);
+        this._replay.commands.length = Math.min(this._replay.commands.length, snap.replayLen);
+        this._replay.hashes.length = Math.min(this._replay.hashes.length, snap.hashLen);
         if (this.state.phase === 'active' && this.state.players[this.state.turn].kind === 'human') break;
       }
       this.selectedTile = null;
@@ -554,6 +581,7 @@
           name: p.name, score: p.score, isTurn: st.turn === i, isMe: i === me,
           handCount: st.hands[i].length, plays: p.plays,
         })),
+        hotseat: this.hotseat, myName: st.players[me] ? st.players[me].name : '',
         myTurn, legalEnds, selectedPlayable: legalEnds.length > 0,
         selectedTile: sel,
         playableTiles, canDraw, canPass,
