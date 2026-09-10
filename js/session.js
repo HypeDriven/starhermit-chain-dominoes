@@ -297,7 +297,11 @@
       }
       P.telemetry.event('round-end', { reason: rr.reason, points: rr.breakdown.map(b => b.points) });
       if (this.audio) {
-        if (rr.winners.includes(me)) this.audio.roundWin(); else this.audio.roundLose();
+        // A blocked table gets its own cue first; the win/lose sting follows.
+        const blocked = rr.reason === 'blocked';
+        if (blocked) this.audio.tableBlocked();
+        const delay = blocked ? 0.7 : 0;
+        if (rr.winners.includes(me)) this.audio.roundWin(delay); else this.audio.roundLose(delay);
         if (this.renderer) { this.renderer.shake(0.15); }
       }
       this._emitView();

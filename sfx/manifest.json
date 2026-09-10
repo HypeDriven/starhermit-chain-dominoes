@@ -1,0 +1,236 @@
+[
+  {
+    "name": "ui-click",
+    "seconds": 1,
+    "prompt": "Short ceramic button click on wood",
+    "event": "ack"
+  },
+  {
+    "name": "ui-hover",
+    "seconds": 1,
+    "prompt": "Very short soft ceramic tick",
+    "event": "hover"
+  },
+  {
+    "name": "ui-confirm",
+    "seconds": 2,
+    "prompt": "Warm two-note soft chime",
+    "event": "confirm"
+  },
+  {
+    "name": "ui-back",
+    "seconds": 1,
+    "prompt": "Soft descending mellow tone",
+    "event": "back"
+  },
+  {
+    "name": "ui-error",
+    "seconds": 1,
+    "prompt": "Muted short double ceramic clack",
+    "event": "invalid"
+  },
+  {
+    "name": "ui-success",
+    "seconds": 3,
+    "prompt": "Bright ascending three-note chime with warm shimmer",
+    "event": "success"
+  },
+  {
+    "name": "ui-modal-open",
+    "seconds": 1,
+    "prompt": "Soft felt whoosh with gentle chime",
+    "event": "modalOpen"
+  },
+  {
+    "name": "ui-toggle",
+    "seconds": 1,
+    "prompt": "Small toggle switch click",
+    "event": "toggle"
+  },
+  {
+    "name": "tile-place",
+    "seconds": 1,
+    "prompt": "Ceramic domino placed firmly on wooden café table, single clack",
+    "event": "place"
+  },
+  {
+    "name": "tile-draw",
+    "seconds": 1,
+    "prompt": "Ceramic domino sliding across wooden table, quick scrape and click",
+    "event": "draw"
+  },
+  {
+    "name": "pass-knock",
+    "seconds": 1,
+    "prompt": "Two knuckles knocking twice on wooden table",
+    "event": "pass"
+  },
+  {
+    "name": "round-win",
+    "seconds": 4,
+    "prompt": "Cheerful short fanfare of clinking ceramic tiles and bright chime",
+    "event": "roundWin"
+  },
+  {
+    "name": "tab-switch",
+    "seconds": 1,
+    "prompt": "Quick light ceramic chip tap on wood",
+    "event": "tabSwitch"
+  },
+  {
+    "name": "scroll-tick",
+    "seconds": 1,
+    "prompt": "Tiny ceramic beads rattling softly in a cloth pouch",
+    "event": "scrollTick"
+  },
+  {
+    "name": "panel-close",
+    "seconds": 1,
+    "prompt": "Soft felt panel sliding shut with a muted thud",
+    "event": "panelClose"
+  },
+  {
+    "name": "toast-notification",
+    "seconds": 2,
+    "prompt": "Warm porcelain bell struck once with a soft mallet",
+    "event": "toast"
+  },
+  {
+    "name": "game-pause",
+    "seconds": 2,
+    "prompt": "Two soft descending muffled ceramic notes",
+    "event": "gamePause"
+  },
+  {
+    "name": "game-resume",
+    "seconds": 2,
+    "prompt": "Two soft ascending muffled ceramic notes",
+    "event": "gameResume"
+  },
+  {
+    "name": "countdown-tick",
+    "seconds": 1,
+    "prompt": "Single crisp ceramic tick on wood",
+    "event": "countdownTick"
+  },
+  {
+    "name": "timer-warning",
+    "seconds": 2,
+    "prompt": "Three quick urgent ceramic clicks on wood",
+    "event": "timerWarning"
+  },
+  {
+    "name": "slider-drag",
+    "seconds": 2,
+    "prompt": "Ceramic piece dragged along soft felt",
+    "event": "sliderDrag"
+  },
+  {
+    "name": "tile-pickup",
+    "seconds": 1,
+    "prompt": "Ceramic domino lifted off the wooden table",
+    "event": "select"
+  },
+  {
+    "name": "tile-flip",
+    "seconds": 1,
+    "prompt": "Ceramic domino flipped face-up, snap ending in a light clack",
+    "event": "draw"
+  },
+  {
+    "name": "tile-shuffle",
+    "seconds": 4,
+    "prompt": "Many dominoes shuffled face-down on wood, swirling clatter",
+    "event": "roundIntro"
+  },
+  {
+    "name": "tile-deal",
+    "seconds": 3,
+    "prompt": "Rhythmic sequence of soft slides and clacks",
+    "event": "roundIntro"
+  },
+  {
+    "name": "round-start",
+    "seconds": 2,
+    "prompt": "Bright chime layered with a ceramic tile tap",
+    "event": "roundIntro"
+  },
+  {
+    "name": "round-lose",
+    "seconds": 3,
+    "prompt": "Subdued descending wooden marimba phrase with a muted ceramic tap",
+    "event": "roundLose"
+  },
+  {
+    "name": "match-win",
+    "seconds": 5,
+    "prompt": "Extended fanfare of clinking tiles, chimes and a warm rising motif",
+    "event": "matchWin"
+  },
+  {
+    "name": "combo-low",
+    "seconds": 1,
+    "prompt": "Pleasant quick double tap of two ceramic tiles",
+    "event": "place"
+  },
+  {
+    "name": "combo-mid",
+    "seconds": 2,
+    "prompt": "Rising rhythmic triple tile clicks with soft chime shimmer",
+    "event": "place"
+  },
+  {
+    "name": "combo-high",
+    "seconds": 3,
+    "prompt": "Rapid toppling cascade of ceramic tiles with bright chime swell",
+    "event": "place"
+  },
+  {
+    "name": "move-undo",
+    "seconds": 2,
+    "prompt": "Soft reversed whoosh ending in a tile lifted off wood",
+    "event": "undoMove"
+  },
+  {
+    "name": "hint-glow",
+    "seconds": 2,
+    "prompt": "Delicate glass-and-ceramic glissando sparkle",
+    "event": "hint"
+  },
+  {
+    "name": "star-award",
+    "seconds": 1,
+    "prompt": "Single bright sparkling chime with a tiny ceramic pop",
+    "event": "star"
+  },
+  {
+    "name": "new-record",
+    "seconds": 4,
+    "prompt": "Rising cascade of bright chimes and clinking tiles",
+    "event": "newRecord"
+  },
+  {
+    "name": "opponent-turn",
+    "seconds": 2,
+    "prompt": "Soft double knock on wood with a light ceramic tick",
+    "event": "opponentTurn"
+  },
+  {
+    "name": "turn-you",
+    "seconds": 1,
+    "prompt": "A single porcelain espresso cup tapped once with a teaspoon, short bright clear ring with a quick clean decay, close-miked in a quiet café",
+    "event": "turnYou"
+  },
+  {
+    "name": "table-blocked",
+    "seconds": 2,
+    "prompt": "Two ceramic domino tiles knocked together once followed by a slow heavy dull thud of a flat palm resting on a wooden café table, final and settled, quiet room",
+    "event": "tableBlocked"
+  },
+  {
+    "name": "match-lose",
+    "seconds": 3,
+    "prompt": "A gentle descending three-note wooden marimba phrase, mellow and unhurried, ending with a single soft ceramic domino tile set down on a wooden table",
+    "event": "matchLose"
+  }
+]

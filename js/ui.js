@@ -967,6 +967,7 @@
       $('results-heading').textContent = res.won
         ? (this.game.mode === 'tutorial' ? 'Lesson complete!' : 'You win the table!')
         : t.tied ? 'Dead even' : res.players[t.winner].name + ' takes the table';
+      this._setResultsArt(res.won ? 'assets/results-win.webp' : 'assets/results-over.webp');
       // stars
       const stars = $('results-stars');
       stars.textContent = res.stars ? '★'.repeat(res.stars) + '☆'.repeat(3 - res.stars) : '';
@@ -1005,8 +1006,19 @@
       if (res.unlocked.length) { this.audio.success(); this._toast('Achievement unlocked: ' + res.unlocked[0].name); }
     }
 
+    // Results illustration (assets/results-*.webp): decorative; the img's
+    // onerror hides it again if the asset is missing.
+    _setResultsArt(src) {
+      const img = $('results-art');
+      if (!img) return;
+      if (!src) { img.classList.add('hidden'); img.removeAttribute('src'); return; }
+      img.classList.remove('hidden');
+      if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+    }
+
     _showTutorialComplete(def) {
       // finish the lesson: results overlay with outro and next lesson link
+      this._setResultsArt('assets/results-win.webp');
       const idx = C().TUTORIALS.findIndex(t => t.id === def.id);
       const next = C().TUTORIALS[idx + 1];
       $('results-heading').textContent = def.title + ' — complete';

@@ -21,6 +21,7 @@
 
   <!-- ============ TITLE ============ -->
   <section id="screen-title" class="screen active" aria-labelledby="title-heading">
+    <img id="title-art" class="title-art" src="assets/key-art.webp" alt="" aria-hidden="true" decoding="async" onerror="this.hidden=true">
     <div class="title-hero">
       <div class="title-logo" aria-hidden="true">
         <span class="logo-tile"><i></i><i></i></span>
@@ -263,6 +264,7 @@
   <div id="overlay-results" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="results-heading">
     <div class="overlay-card overlay-wide">
       <h2 id="results-heading">Result</h2>
+      <img id="results-art" class="results-art hidden" alt="" aria-hidden="true" decoding="async" onerror="this.classList.add('hidden')">
       <div id="results-stars" class="results-stars" aria-label="Stars earned"></div>
       <div id="results-breakdown" class="breakdown"></div>
       <div id="results-unlocks" class="unlocks"></div>

@@ -1,0 +1,43 @@
+# Chain Dominoes — SFX manifest (canonical). One clip per line:
+# file | event id (AudioEngine method in js/audio.js) | description of the sound | usage context
+# Clips: MOSS-SoundEffect v2.0, 48 kHz mono Opus 96 kbps VBR, loudness-normalised (100 steps). All play on the effects bus.
+# Every method keeps a procedural WebAudio fallback so the cue still fires if the clip fails to load.
+ui-click.opus | ack | Short ceramic button click on wood | Every acknowledged input: Draw/Pass/end-cap press, first tap on a hand tile (ui.js _doAction / _onPick)
+ui-hover.opus | hover | Very short soft ceramic tick | Pointer enters any button, tab, nav link, input or select (ui.js pointerover)
+ui-confirm.opus | confirm | Warm two-note soft chime | A match starts and the game screen opens (ui.js _startMatch)
+ui-back.opus | back | Soft descending mellow tone | Returning to the title screen from any screen or match (ui.js _toTitle)
+ui-error.opus | invalid | Muted short double ceramic clack | Rejected command: wrong end, not your turn, must play/draw first, lesson gate (session.js _reject)
+ui-success.opus | success | Bright ascending three-note chime with warm shimmer | Achievement unlocked, in results or after the last lesson (ui.js)
+ui-modal-open.opus | modalOpen | Soft felt whoosh with gentle chime | Round-over or results overlay opens (ui.js _openOverlay; pause is excluded)
+ui-toggle.opus | toggle | Small toggle switch click | Any settings checkbox changes (ui.js bind)
+tab-switch.opus | tabSwitch | Quick light ceramic chip tap on wood | Leaderboard tab switch on the Profile screen (This device / Global / Daily)
+scroll-tick.opus | scrollTick | Tiny ceramic beads rattling softly in a cloth pouch | Keyboard or gamepad focus moves along the hand (ui.js _bindKeyboard / _gpButtons)
+slider-drag.opus | sliderDrag | Ceramic piece dragged along soft felt | Volume slider being dragged, throttled to one tick per 120 ms
+panel-close.opus | panelClose | Soft felt panel sliding shut with a muted thud | Round-over or results overlay closes (ui.js _closeOverlay)
+toast-notification.opus | toast | Warm porcelain bell struck once with a soft mallet | Toast appears: achievement, name saved, gamepad connected (ui.js _toast)
+game-pause.opus | gamePause | Two soft descending muffled ceramic notes | Pause overlay opens (P key, Start button, menu button, tab hidden)
+game-resume.opus | gameResume | Two soft ascending muffled ceramic notes | Pause overlay closes via Resume or Escape
+countdown-tick.opus | countdownTick | Single crisp ceramic tick on wood | Speed challenge clock: one tick per second during the last 5 s (ui.js 'clock' event)
+timer-warning.opus | timerWarning | Three quick urgent ceramic clicks on wood | Speed challenge clock crosses 10 s remaining (once per crossing)
+tile-pickup.opus | select | Ceramic domino lifted off the wooden table | A hand tile becomes selected (session.js selectTile)
+tile-place.opus | place | Ceramic domino placed firmly on wooden café table, single clack | Any tile played on the chain, human or AI (session.js _afterCommand / _runOneAI)
+combo-low.opus | place | Pleasant quick double tap of two ceramic tiles | Layered 60 ms after tile-place when 2-3 plays land within 2.6 s of each other (audio.js _comboStreak)
+combo-mid.opus | place | Rising rhythmic triple tile clicks with soft chime shimmer | Layered on tile-place at 4-5 quick successive plays
+combo-high.opus | place | Rapid toppling cascade of ceramic tiles with bright chime swell | Layered on tile-place at 6+ quick successive plays (skip-anim runs)
+tile-draw.opus | draw | Ceramic domino sliding across wooden table, quick scrape and click | A tile is drawn from the boneyard, human or AI
+tile-flip.opus | draw | Ceramic domino flipped face-up, snap ending in a light clack | Layered 250 ms after tile-draw: the drawn tile turns face-up in the hand
+pass-knock.opus | pass | Two knuckles knocking twice on wooden table | A player passes (human Pass button / S key, or AI)
+tile-shuffle.opus | roundIntro | Many dominoes shuffled face-down on wood, swirling clatter | Round intro, t+0.0 s: match start and every Next round (ui.js _startMatch / btn-next-round)
+tile-deal.opus | roundIntro | Rhythmic sequence of soft slides and clacks | Round intro, t+1.0 s: hands dealt
+round-start.opus | roundIntro | Bright chime layered with a ceramic tile tap | Round intro, t+2.0 s: play begins
+turn-you.opus | turnYou | Single porcelain espresso cup tapped once with a teaspoon, short bright ring | The turn comes back to the human after AI moves (session.js _runOneAI)
+opponent-turn.opus | opponentTurn | Soft double knock on wood with a light ceramic tick | An AI seat is about to think/move (session.js _maybeRunAI)
+hint-glow.opus | hint | Delicate glass-and-ceramic glissando sparkle | Hint requested (H key, Y button, Hint action) and a suggestion is shown
+move-undo.opus | undoMove | Soft reversed whoosh ending in a tile lifted off wood | Undo rewinds to the previous human decision point (practice/journey/lessons)
+table-blocked.opus | tableBlocked | Two ceramic tiles knocked together, then a heavy dull palm thud on wood | Round ends blocked: every seat passed in a row (session.js _handleRoundOver, precedes round-win/lose by 0.7 s)
+round-win.opus | roundWin | Cheerful short fanfare of clinking ceramic tiles and bright chime | Round ends and the local seat is among the winners (domino or lowest pips)
+round-lose.opus | roundLose | Subdued descending wooden marimba phrase with a muted ceramic tap | Round ends and the local seat did not win it
+match-win.opus | matchWin | Extended fanfare of clinking tiles, chimes and a warm rising motif | Match over, local seat wins (results overlay)
+match-lose.opus | matchLose | Gentle descending three-note wooden marimba phrase ending on a soft tile set-down | Match over, another seat wins or time expires (results overlay)
+star-award.opus | star | Single bright sparkling chime with a tiny ceramic pop | Journey results: one per star, staggered 0.4 s + 0.35 s per star
+new-record.opus | newRecord | Rising cascade of bright chimes and clinking tiles | Journey stage replayed with a new best score (session.js _handleMatchOver)

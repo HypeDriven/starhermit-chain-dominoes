@@ -29,6 +29,7 @@ const MIME = {
   '.png': 'image/png', '.ico': 'image/x-icon', '.wav': 'audio/wav',
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary',
   '.woff2': 'font/woff2', '.ts': 'video/mp2t', '.txt': 'text/plain',
+  '.webp': 'image/webp', '.opus': 'audio/ogg',
 };
 const browserNoise = /GL Driver Message|GPU stall due to ReadPixels|Automatic fallback to software WebGL|EnableWebGLDeveloperExtensions|swiftshader|deprecated|three\.min\.js/i;
 
@@ -45,7 +46,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404); res.end('not found');
   }
 });
-await new Promise(r => server.listen(0, '127.0.0.1', r));
+await new Promise(r => server.listen(process.env.PORT ? +process.env.PORT : 0, '127.0.0.1', r)); // PORT env optional; ephemeral by default
 const BASE = `http://127.0.0.1:${server.address().port}`;
 
 const step = async (name, fn) => { await fn(); console.log(`ok - ${name}`); };

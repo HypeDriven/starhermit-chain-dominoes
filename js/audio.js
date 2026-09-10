@@ -22,7 +22,7 @@
     'slider-drag', 'tile-pickup', 'tile-shuffle', 'tile-deal', 'round-start',
     'move-undo', 'hint-glow', 'star-award', 'new-record', 'opponent-turn',
     'scroll-tick', 'tile-flip', 'countdown-tick', 'combo-low', 'combo-mid',
-    'combo-high',
+    'combo-high', 'turn-you', 'table-blocked', 'match-lose',
   ];
 
   class AudioEngine {
@@ -211,17 +211,17 @@
       this._osc('sine', 960, t + 0.09, 0.14, 0.07, this.buses.effects);
       this._caption('hint');
     }
-    roundWin() {
+    roundWin(delay) {
       if (!this.ctx) return;
-      if (this._sample('round-win')) { this._caption('round won'); return; }
-      const t = this.ctx.currentTime;
+      if (this._sample('round-win', delay)) { this._caption('round won'); return; }
+      const t = this.ctx.currentTime + (delay || 0);
       [523, 659, 784].forEach((f, i) => this._osc('triangle', f, t + i * 0.09, 0.22, 0.12, this.buses.effects));
       this._caption('round won');
     }
-    roundLose() {
+    roundLose(delay) {
       if (!this.ctx) return;
-      if (this._sample('round-lose')) { this._caption('round lost'); return; }
-      const t = this.ctx.currentTime;
+      if (this._sample('round-lose', delay)) { this._caption('round lost'); return; }
+      const t = this.ctx.currentTime + (delay || 0);
       [392, 330].forEach((f, i) => this._osc('triangle', f, t + i * 0.12, 0.25, 0.1, this.buses.effects));
       this._caption('round lost');
     }
@@ -235,14 +235,26 @@
     }
     matchLose() {
       if (!this.ctx) return;
+      if (this._sample('match-lose')) { this._caption('match lost'); return; }
       const t = this.ctx.currentTime;
       [440, 349, 294].forEach((f, i) => this._osc('triangle', f, t + i * 0.14, 0.3, 0.1, this.buses.effects));
       this._caption('match lost');
     }
     turnYou() {
       if (!this.ctx) return;
+      if (this._sample('turn-you')) { this._caption('your turn'); return; }
       this._osc('sine', this._variant(590, 0.03), this.ctx.currentTime, 0.09, 0.06, this.buses.effects);
       this._caption('your turn');
+    }
+
+    // Table locked: everyone passed in a row (round ends 'blocked').
+    tableBlocked() {
+      if (!this.ctx) return;
+      if (this._sample('table-blocked')) { this._caption('table blocked'); return; }
+      const t = this.ctx.currentTime;
+      this._noise(t, 0.05, 2600, 5, 0.3, this.buses.effects, 'highpass');
+      this._osc('triangle', 150, t + 0.12, 0.3, 0.16, this.buses.effects);
+      this._caption('table blocked');
     }
 
     /* ------------------------------------- sample-only one-shots (sfx/) */
