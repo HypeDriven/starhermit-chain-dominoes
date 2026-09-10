@@ -6,4 +6,4 @@ version=1.0.0
 contentVersion=1
 players=2-4
 orientation=any
-cover=coverart.png
+cover=cover.jpg
