@@ -143,6 +143,12 @@
       on('btn-hint', () => { if (this.game) this.game.hint(); });
       on('btn-undo', () => { if (this.game) this.game.undo(); });
       on('btn-skip', () => { if (this.game) this.game.skipToSettled(); });
+      on('btn-view', () => {
+        if (!this.renderer) return;
+        const top = this.renderer.toggleTopDown();
+        const b = document.getElementById('btn-view');
+        if (b) b.setAttribute('aria-pressed', top ? 'true' : 'false');
+      });
       on('btn-tutorial-quit', () => this.leaveMatch());
       on('btn-end-left', () => this._commitToEnd('left'));
       on('btn-end-right', () => this._commitToEnd('right'));

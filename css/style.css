@@ -316,7 +316,7 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent);
 
 /* domino tiles (pure CSS, used in hand + chain strip) */
 .domino {
-  --dw: 34px; --dh: 60px;
+  --dw: 44px; --dh: 76px;
   width: var(--dw); height: var(--dh);
   flex-shrink: 0;
   border: none; border-radius: 7px;
@@ -467,7 +467,7 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent);
   .hud-objective { font-size: 0.85rem; }
   .hud-scores { font-size: 0.8rem; gap: 5px; }
   .hud-scores .score-chip { padding: 3px 8px; }
-  .domino { --dw: 40px; --dh: 70px; }
+  .domino { --dw: 44px; --dh: 74px; }
   .chain-strip-wrap { margin: auto 6px 4px; }
   .rail-right {
     flex-direction: row; flex-wrap: wrap; top: auto; bottom: 0; max-height: none;
@@ -491,8 +491,8 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent);
   .rail-right { padding: 6px; align-items: center; }
   .rail-right .rail-title, .rail-right kbd { display: none; }
   .btn-action { width: auto; min-width: var(--tap); min-height: var(--tap); font-size: 0.72rem; padding: 6px 4px; }
-  .domino { --dw: 30px; --dh: 52px; }
-  #hand-tray { padding-top: 4px; padding-bottom: calc(4px + var(--sab)); }
+  .domino { --dw: 44px; --dh: 64px; }
+  #hand-tray { padding-top: 4px; padding-bottom: calc(4px + var(--sab)); overflow-x: auto; }
   .turn-indicator { writing-mode: vertical-rl; padding: 8px 4px; font-size: 0.75rem; }
   .tutorial-banner { top: 4px; padding: 6px 12px; font-size: 0.85rem; }
 }

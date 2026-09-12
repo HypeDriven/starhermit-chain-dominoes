@@ -273,14 +273,47 @@
       const THREE = this.THREE;
       const ease = t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
       const lerp = (a, b) => a + (b - a) * ease;
-      const p = FRAMING.introFrom, q = FRAMING.camPos;
+      const p = FRAMING.introFrom, q = this._topDown ? [0, 62, 0.01] : FRAMING.camPos;
       const ds = this._distScale || 1;
       this.camera.position.set(lerp(p[0], q[0]) * ds, lerp(p[1], q[1]) * ds, lerp(p[2], q[2]) * ds);
       this.camera.lookAt(FRAMING.camLook[0], FRAMING.camLook[1], FRAMING.camLook[2]);
       this._baseCamPos = this.camera.position.clone();
     }
 
-    resetCamera() { this._camT = 1; this._applyCamera(1); }
+    resetCamera() { this._topDown = false; this._camT = 1; this._fitCamera(); this._applyCamera(1); }
+    toggleTopDown() { this._topDown = !this._topDown; this._camT = 1; this._fitCamera(); this._applyCamera(1); return this._topDown; }
+
+    // Pull the camera back until the hand arc and the chain area project
+    // inside the canvas with a margin (the canvas itself is unobscured: the
+    // HTML tray and rails sit outside it).
+    _fitCamera() {
+      const THREE = this.THREE;
+      const q = this._topDown ? [0, 62, 0.01] : FRAMING.camPos;
+      const look = new THREE.Vector3(FRAMING.camLook[0], FRAMING.camLook[1], FRAMING.camLook[2]);
+      const pts = [];
+      for (const x of [-13.5, 13.5]) pts.push(new THREE.Vector3(x, 2.4, 16.8)); // standing hand, front
+      for (const x of [-14, 14]) pts.push(new THREE.Vector3(x, 0, -14));        // chain rows
+      pts.push(new THREE.Vector3(0, 0, -18));
+      const v = new THREE.Vector3();
+      let ds = 1;
+      const margin = 0.9;
+      for (let i = 0; i < 14; i++) {
+        this.camera.position.set(q[0] * ds, q[1] * ds, q[2] * ds);
+        this.camera.lookAt(look);
+        this.camera.updateMatrixWorld();
+        this.camera.updateProjectionMatrix();
+        let worst = 0;
+        for (const p of pts) {
+          v.copy(p).project(this.camera);
+          // the bottom strip (HTML chain mirror) covers ~12% of the canvas
+          const yLimit = v.y < 0 ? 0.74 : margin;
+          worst = Math.max(worst, Math.abs(v.x), Math.abs(v.y) * (margin / yLimit));
+        }
+        if (worst <= margin) break;
+        ds *= Math.min(1.5, worst / margin + 0.01);
+      }
+      this._distScale = ds;
+    }
 
     shake(amount) {
       if (this.reducedMotion) return;
@@ -882,10 +915,11 @@
       this.renderer.setSize(Math.max(2, w), Math.max(2, h), false);
       const aspect = w / Math.max(1, h);
       this.camera.aspect = aspect;
-      // Portrait-fit framing: widen fov and pull back so the table fits.
+      // Portrait-fit framing: widen fov, then pull back until hand + chain fit.
       this.camera.fov = aspect < 0.9 ? 54 : FRAMING.fov;
+      this.camera.updateProjectionMatrix();
       const prevScale = this._distScale;
-      this._distScale = aspect < 0.9 ? 1.22 : (aspect < 1.3 ? 1.08 : 1);
+      this._fitCamera();
       if (prevScale !== this._distScale) this._applyCamera(this._camT);
       this.camera.updateProjectionMatrix();
     }

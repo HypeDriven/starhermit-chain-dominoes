@@ -154,7 +154,7 @@ deterministic tie-break by tile id then end. Lessons use `'scripted'`, which rou
 | Hint / Undo | Buttons (hidden when not allowed) | `H` / `U` | Y hints |
 | Pause | ☰ button | `P`; `Escape` closes the pause overlay only | Start |
 | Skip animation | "Skip anim" runs all pending AI turns and `settle()`s the scene | — | — |
-| Camera reset | — | `C` | — |
+| Camera reset / top view | "Top view" toggles a fitted top-down table view | `C` resets to the fitted authored angle | — |
 
 Input rules: `Session.act` refuses commands while paused or finished and dedupes by action id; a 3D tap is a
 pointer-up within 450 ms and 12 px of pointer-down (`render3d.js _bindPointer`), so drags never place tiles. Every
