@@ -301,22 +301,25 @@ scroll, and overlay cards scroll internally.
 
 ## 12. StarHermit integration
 
-Detection: the host shell injects `window.__STARHERMIT__ = { launchToken, scopeHint }`; `platform.js host.init`
-decodes the token's `game`/`scope` claim (fallback `chain-dominoes`), keeps the bearer in memory only, and never
-probes `/api/v1/time` on plain static hosting (so an offline run logs no console errors).
+Detection: the launch token arrives in the URL fragment `#game_token=<jwt>` (optional `&session_id=`), is stripped
+after the read, and is kept in memory only — never persisted. `platform.js host.init` decodes the JWT's `sub` +
+`game_scope` claims (the slug is never hard-coded), sends the token as `Authorization: Bearer`, re-mints it every
+45 min via `POST /api/v1/games/{slug}/launch-token` (60 s retry on failure), and never probes `/api/v1/time` on
+plain static hosting without a token (so an offline run logs no console errors). Hosted mode activates iff a
+token was read.
 
 | Platform feature | Used | How |
 |---|---|---|
-| Identity / profile | Yes | Guest profile by default; "Signed in — cloud saves active" when a launch token is present. Display name is editable locally |
+| Identity / profile | Yes | Guest profile by default. Hosted: the display name is the profile nickname from `GET /api/v1/users/{sub}/profile` (never usernames, never `/api/v1/me`; `Player <id8>` fallback), shown read-only on the Profile screen with cloud-sync status |
 | Server time | Yes | `GET /api/v1/time` (`now` / `serverTime` / `epochMs`), round-trip-adjusted offset drives the daily seed |
-| Cloud save | Yes | `GET`/`PUT /api/v1/games/{scope}/save` with `{version, checksum, payload}`; a strictly newer remote document opens the Profile "Save conflict" panel where the player keeps one |
-| Presence / activity | Yes | `POST /api/v1/presence` every 60 s during a match; `POST /api/v1/activity/start` on match start and `/end` with minutes on leave or `pagehide` |
-| Leaderboards | Yes | Journey, daily and challenge results post `{score, won, ruleset, contentVersion, seed, mode, assists, durationMs, ticks}` to `POST /api/v1/games/{scope}/scores`; Profile reads `/leaderboards/global` and `/daily`; offline it shows the on-device board |
-| Achievements | Local | Seven keys unlock idempotently in the local save; no server unlock call |
+| Cloud save | Yes | One zip+base64 slot at `GET`/`PUT /api/v1/me/cloud-saves/{slug}` mirroring the checksummed save doc; saves debounce 2 s and flush on `pagehide`/hidden with keepalive; a strictly newer remote document opens the Profile "Save conflict" panel where the player keeps one |
+| Presence / activity | No | No per-game endpoints exist for launch tokens (wiki); the client deliberately never calls them |
+| Leaderboards | Read-only | Clients never submit (wiki): journey/daily results stay on the on-device board and in the cloud-saved doc. The Profile screen reads the platform board via `GET /api/v1/games/{slug}` → `leaderboardId` → `GET /api/v1/leaderboards/{id}/entries`, resolving user ids to nicknames; no `leaderboardId` (or offline) → local records |
+| Achievements | Local | Seven keys unlock idempotently in the local save (part of the cloud-saved doc); the conditions are client-progress based, not script-knowable per session, so no script-owned declaration was added |
 | Sessions / Game Script | Yes | `starhermit.txt` declares `server=server.js`. The script validates membership, connection, command-id shape, duplicates (idempotent `ok:true, duplicate:true`), payload ≤ 512 bytes and rules legality; public views expose other seats only as `handCount` and the boneyard as a count; `tick` forfeits the seat that lets a turn deadline (≥ 5 s, default 45 s) lapse and resolves sessions parked at round-over; `getReplay` returns the ordered log and final hash |
-| Invitations / matchmaking | Best-effort | "Create private invitation" posts to `/api/v1/games/chain-dominoes/sessions`, "Find public match" to `/matchmaking`; failures surface as announcements. There is no in-client transport that drives `server.js` from two browsers |
-| Telemetry | Opt-in | `start`, `tutorial-step`, `round-end`, `retry`, `settings-change`, `error` to `POST /api/v1/telemetry` only after consent |
-| Token refresh | Available | `POST /api/v1/auth/refresh` (memory only) |
+| Invitations / matchmaking | Lobby only (honest) | "Create private invitation" / "Find public match" use the real platform queue (`POST`/`GET`/`DELETE /api/v1/games/{slug}/matchmaking`, polled every ~3 s); on a match the UI says hosted tables need the realtime play update — the transport (`ws/v1/games?sessionId=&access_token=`, sync-on-open, `{type:'cmd', data:{playerId, commandId, cmd}}` envelopes, `POST /sessions/ai`) is plumbed in `platform.js` but not yet driven by the local Session engine |
+| Telemetry | No | No client telemetry endpoint exists for launch tokens (wiki); consent-gated funnel events stay in-memory only |
+| Token refresh | Yes | `POST /api/v1/games/{slug}/launch-token` every 45 min (memory only, 60 s retry) |
 | Chat, voice, friends panel, rating, containers | No | Not implemented |
 
 ## 13. Technical architecture

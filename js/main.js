@@ -14,6 +14,16 @@
       store.cloudLoad().then((conflict) => {
         if (conflict && root.__CD_UI) root.__CD_UI.refreshTitle();
       }).catch(() => {});
+      // Hosted: the account nickname replaces the guest name everywhere
+      // (match seats, boards, profile screen).
+      P.host.fetchProfile().then((prof) => {
+        if (prof) {
+          store.doc.profile = { name: prof.name, avatar: null, guest: false };
+          store.saveNow();
+          if (root.__CD_UI) root.__CD_UI.refreshTitle();
+        }
+      }).catch(() => {});
+      P.host.onSync(() => { if (root.__CD_UI) root.__CD_UI.refreshTitle(); });
     }
 
     const ui = new root.ChainDominoesUI.UI({

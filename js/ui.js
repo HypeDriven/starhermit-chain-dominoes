@@ -492,21 +492,40 @@
     }
 
     async _hostedCreate() {
+      // Private table via the platform matchmaking queue (real games API).
       try {
-        const res = await P().host.api('/api/v1/games/chain-dominoes/sessions', {
-          method: 'POST', body: JSON.stringify({ ruleset: { targetScore: 100 }, private: true }),
-        });
+        const res = await P().host.matchmakingJoin({ private: true, ruleset: { targetScore: 100 } });
         const panel = $('setup-body').querySelector('.panel');
-        panel.appendChild(el('p', '', 'Invitation created: ' + (res.inviteCode || res.sessionId)));
+        const code = res.inviteCode || res.ticketId || res.sessionId;
+        panel.appendChild(el('p', '', 'Invitation queued' + (code ? ': ' + code : '') +
+          '. Hosted tables open when the realtime play update ships — pass-and-play and AI tables are fully playable now.'));
         this._announce('Invitation created.');
       } catch (e) {
         this._announce('Could not create invitation: ' + e.message, 'error');
       }
     }
     async _hostedMatchmake() {
+      // Public matchmaking through the real queue: join, poll for a match,
+      // and leave the queue afterwards. Table play itself needs the realtime
+      // client, which this build does not ship — the UI says so honestly.
       try {
-        await P().host.api('/api/v1/games/chain-dominoes/matchmaking', { method: 'POST', body: '{}' });
+        const joined = await P().host.matchmakingJoin({ ruleset: { targetScore: 100 } });
+        const ticketId = joined.ticketId || joined.id || null;
         this._announce('Searching for a match…');
+        const poll = async () => {
+          let status = null;
+          try { status = await P().host.matchmakingPoll(ticketId); } catch (e) { return; }
+          if (status && (status.matched || status.sessionId)) {
+            this._announce('Match found.');
+            this._toast('Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable.');
+            try { await P().host.matchmakingLeave(ticketId); } catch (e) { /* ok */ }
+          } else if (status && status.error) {
+            this._announce('Matchmaking: ' + status.error, 'error');
+          } else {
+            this._matchPollTimer = setTimeout(poll, 3000);
+          }
+        };
+        this._matchPollTimer = setTimeout(poll, 1500);
       } catch (e) {
         this._announce('Matchmaking unavailable: ' + e.message, 'error');
       }
@@ -600,8 +619,6 @@
       this.audio.confirm();
       this.audio.roundIntro();
       this._timerWarned = false;
-      P().host.startActivity();
-      this._heartbeat();
       this._refreshView();
     }
 
@@ -888,7 +905,6 @@
         this.game.leave();
         this.game = null;
       }
-      P().host.endActivity();
       if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
       this.audio.stopAll();
       this._toTitle();
@@ -1060,10 +1076,15 @@
 
     /* ----------------------------------------------------------- profile */
     _buildProfile() {
-      $('input-name').value = this.store.profile.name;
-      $('profile-kind').textContent = this.store.profile.guest
-        ? 'Guest profile — progress is stored on this device. Sign in via the host shell for cloud saves.'
-        : 'Signed in — cloud saves active.';
+      const hostedProfile = P().host.profile && !P().host.profile.guest ? P().host.profile : null;
+      $('input-name').value = hostedProfile ? hostedProfile.name : this.store.profile.name;
+      $('input-name').disabled = !!hostedProfile;
+      const syncTxt = P().host.sync === 'synced' ? 'cloud save synced'
+        : P().host.sync === 'saving' ? 'saving…'
+        : 'cloud sync unavailable';
+      $('profile-kind').textContent = hostedProfile
+        ? 'Signed in as ' + hostedProfile.name + ' — ' + syncTxt + '. The name comes from your platform profile.'
+        : 'Guest profile — progress is stored on this device. Launch from the platform for cloud saves.';
       const st = this.store.progress.stats;
       const dl = $('stats-list');
       dl.innerHTML = '';
@@ -1095,15 +1116,16 @@
         board.forEach(e => list.appendChild(el('li', '', e.name + ' — ' + e.score + ' pts (' + e.mode + ', ' + fmtTime(e.durationMs || 0) + ')')));
         $('lb-note').textContent = 'Stored on this device only.';
       } else {
-        try {
-          const res = await P().host.fetchLeaderboard(kind);
-          (res.entries || []).slice(0, 20).forEach(e =>
-            list.appendChild(el('li', '', e.name + ' — ' + e.score + ' pts')));
-          if (!res.entries || !res.entries.length) list.appendChild(el('li', 'muted', 'No entries yet.'));
-          $('lb-note').textContent = res.local ? 'Offline — showing nothing yet.' : '';
-        } catch (e) {
-          list.appendChild(el('li', 'muted', 'Leaderboard unavailable (' + e.message + ').'));
-        }
+        // Platform leaderboard (read-only): no leaderboardId -> local records.
+        const res = await P().host.fetchLeaderboard();
+        (res.entries || []).slice(0, 20).forEach(e =>
+          list.appendChild(el('li', '', e.name + ' — ' + e.score + ' pts')));
+        if (!res.entries || !res.entries.length) list.appendChild(el('li', 'muted', 'No entries yet.'));
+        $('lb-note').textContent = res.local
+          ? (res.reason === 'no-leaderboard'
+            ? 'This game has no platform leaderboard — personal bests live on this device and in your cloud save.'
+            : 'Platform board unavailable — showing nothing yet.')
+          : '';
       }
     }
 
@@ -1281,7 +1303,6 @@
           };
           this.store.saveNow();
         }
-        P().host.endActivity();
       });
       window.addEventListener('resize', () => { if (this.renderer) this.renderer.resize(); });
       window.addEventListener('orientationchange', () => setTimeout(() => { if (this.renderer) this.renderer.resize(); }, 120));
@@ -1291,8 +1312,9 @@
     }
 
     _heartbeat() {
+      // No presence endpoint exists for launch tokens (wiki) — removed.
       if (this._hbTimer) clearInterval(this._hbTimer);
-      this._hbTimer = setInterval(() => P().host.heartbeat(), 60000);
+      this._hbTimer = null;
     }
   }
 

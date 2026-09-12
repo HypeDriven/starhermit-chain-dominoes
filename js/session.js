@@ -377,8 +377,10 @@
         ticks: st.tick,
       };
       if (this.mode === 'daily' || this.mode === 'challenge' || this.mode === 'journey') {
+        // Clients never submit to game leaderboards (wiki) — personal bests
+        // stay on the local board and in the cloud-saved doc; ranked hosted
+        // boards are read-only.
         P.localSubmit(Object.assign({ name: this.store ? this.store.profile.name : 'You', at: Date.now(), contentId: this.content ? this.content.id : '' }, entry));
-        P.host.submitScore(entry).catch(() => {});
       }
 
       if (this.audio) (won ? this.audio.matchWin() : this.audio.matchLose());
