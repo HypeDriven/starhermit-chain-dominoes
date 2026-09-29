@@ -15,7 +15,7 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | Players | 1 human vs 1-3 deterministic AI seats; 2 humans pass-and-play on one device; 2-4 humans through the hosted Game Script |
 | Session | One lesson 1-2 min; a journey stage 5-15 min; a daily table 5-10 min; a challenge 3-15 min |
 | Platforms | Desktop and mobile browsers, any orientation (`orientation=any`) |
-| Rendering | Three.js r-module (`vendor/three.module.min.js`) café tabletop on a `<canvas>`, plus a complete semantic HTML mirror (hand listbox, chain strip, end caps, action buttons). The canvas is optional: if WebGL or Three.js fails the DOM layer plays the whole game |
+| Rendering | Three.js r182 (`vendor/three.module.min.js`, addons in `vendor/three/addons/` via an importmap) café tabletop on a `<canvas>`, plus a complete semantic HTML mirror (hand listbox, chain strip, end caps, action buttons). The canvas is optional: if WebGL or Three.js fails the DOM layer plays the whole game |
 | Dependencies | None at runtime. `playwright-core` (dev) for `tests/e2e.mjs` |
 
 ### File map
@@ -28,7 +28,9 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | `js/content.js` | Themes (5), lessons (6), journey stages (40), challenges (8), daily generator, practice config, offline validator |
 | `js/ai.js` | `chooseMove(state, seat, difficulty, rng)`: easy / medium / hard, seeded |
 | `js/session.js` | `Session`: one match; commands, AI scheduling, clock, undo, hints, lesson step engine, replay envelope, progression, achievements |
-| `js/render3d.js` | `ChainRenderer`: authored camera, procedural tiles/props/textures, pick raycasts, legal-end markers, quality tiers, reduced motion, `settle()` |
+| `js/gfx.js` | Pure graphics quality model: presets, categories, GPU detection, `resolve()`, `describe()`, Graphics panel strings (9 locales) |
+| `js/render3d.js` | `ChainRenderer`: authored camera, procedural tiles/props/textures, pick raycasts, legal-end markers, `setGraphics()` (shadows, IBL, detail, steam, shimmer, post chain, adaptive resolution), reduced motion, `settle()` |
+| `vendor/three/addons/` | Same-revision (0.182.0) three.js addons: EffectComposer, RenderPass, ShaderPass, GTAOPass, UnrealBloomPass, OutputPass, SMAAPass, FXAAPass, RoomEnvironment and their shader/math imports |
 | `js/ui.js` | `UI`: screens, setup flows, HUD, DOM mirror, keyboard/gamepad, overlays, settings, profile, help, captions |
 | `js/audio.js` | `AudioEngine`: 4 buses, 39 sampled one-shots with synth fallbacks, seeded variants, café ambience, generative pad |
 | `js/platform.js` | `Store` (checksummed local save), achievements, telemetry (consent-gated), local leaderboard, StarHermit host adapter |
@@ -37,7 +39,7 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | `sfx/` | 39 Opus clips; `manifest.txt` (canonical binding), `manifest.json` (generator input), `manifest.md` (generated) |
 | `assets/` | `key-art.webp` (title backdrop), `results-win.webp`, `results-over.webp` |
 | `coverart.png`, `icon.png`, `favicon.svg` | Store cover (1200x675), touch icon, tab icon |
-| `tests/` | `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright); `browser.test.js` (raw CDP, legacy); probes |
+| `tests/` | `gfx.test.js`, `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright); `browser.test.js` (raw CDP, legacy); probes |
 | `knownissues.md` | QA history: confirmed defects and their fixes |
 
 ## 2. Vision and design pillars
@@ -58,7 +60,7 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
    use the hard AI, the same code that plays against you. Rules in: six 1-5 step lessons, help cards generated from the
    current key bindings. Rules out: tutorials that play themselves, modal rule dumps before the first tile.
 5. **A quiet café, not a casino.** Warm wood, green felt, ceramic clacks, steam from a cup. Effects sit below the
-   information: no bloom, no particles over the chain, a 0.15 shake at round end that reduced motion removes.
+   information: bloom only on the legal-end markers and selection ring, no particles over the chain, a 0.15 shake at round end that reduced motion removes.
    Rules out: strobing, camera swoops the player cannot skip, sounds that fire without a logical event.
 
 ## 3. Player experience
@@ -215,8 +217,31 @@ uppercase 0.8 rem with 0.1 em tracking.
 **Scene constants** (`render3d.js`): perspective fov 38 (54 in portrait), camera `[0,26,30]` looking at `[0,0,-2]`,
 intro swoop from `[0,40,52]` over 1.4 s cubic ease; table 72 units, felt 56x44; tile 2x4x0.85 with 0.35 gap; chain
 rows of 30 units advancing 5.2 per row in a serpentine. ACES filmic tone mapping, exposure 1.05 (Midnight 1.55, Mono
-1.2), fog from 70 to 160 in the theme fog colour, no post-processing. Quality tiers: low (pixel ratio 1, no shadows,
-24 steam points), medium (1.5, 1024 px PCF soft shadows, 60), high (2, 120); "Auto" picks by UA and core count.
+1.2), fog from 70 to 160 in the theme fog colour. Post-processing and effects follow the Graphics settings below.
+
+**Graphics.** A warm key light with PCF shadows whose box is fitted to the play area (felt, hand arc, cup, boneyard),
+a hemisphere fill and a café pendant; ACES filmic tone mapping with sRGB output. Tiles are physical ceramic with
+drilled pips, a grooved divider and a brass spinner pin; the felt sits in a leather-bound edge band; the wall has a
+plaster band over a wainscot and a mullioned window; the cup has a crema ring and soft steam that rises, sways and
+fades. Optional effects: image-based lighting from three's `RoomEnvironment` (PMREM, scene intensity 0.3, the felt
+0.08, the fill light steps down to keep exposure), surface detail (clearcoat glaze on tiles and cup, bump-mapped
+felt, wood and recessed pips, 2x face textures), steam density (24 or 120 points), window-light shimmer (a slow
+±3.5 % key-light drift), and a post chain — GTAO contact darkening, UnrealBloom at a scene-linear threshold of 2.2
+that only the boosted legal-end markers and selection ring exceed, a gentle S-curve/saturation grade with vignette,
+then OutputPass and SMAA or FXAA; MSAA uses the canvas or a multisampled half-float target. Steam and shimmer stop
+with reduced motion or `prefers-reduced-motion`. The Settings screen's **Graphics** section offers Quality (Auto,
+chosen from the WebGL unmasked renderer: software renderers get Low, discrete GPUs and Apple M get High, others
+Balanced, touch devices capped at Balanced; Low; Balanced; High; Ultra), a render scale (50–200 % of the preset's),
+one select per category — shadows (off/1024/2048/4096), ambient occlusion (off/on/high), bloom, colour grade,
+anti-aliasing (off/FXAA/SMAA/MSAA), reflections, surface detail, steam particles, window light — each defaulting to
+"From preset (…)", adaptive resolution (averages 90 frames; steps down 0.1 to 0.6 above 26 ms, up 0.05 below 14 ms)
+and a frame-rate readout (top-right of the table), plus a summary "GPU · effects · W×H px". Pixel ratio is
+min(devicePixelRatio, preset cap: Low 1, Balanced 1.5, High/Ultra 2) × preset scale (Ultra 1.25) × render scale ×
+adaptive scale; Low renders without any post pass. Choosing a preset clears overrides; changes apply live and persist
+in the save document (`settings.quality` = preset, legacy "medium" reads as Balanced; `settings.gfx` = scale, toggles,
+overrides). `body[data-gfx-preset]` exposes the resolved preset. If the addons or post chain fail, the table renders
+without post and the panel says so. The panel's strings are localized (en-US, en-GB, es-419, es-ES, de-DE, fr-FR,
+fr-CA, pt-BR, it-IT) from `navigator.language`.
 
 **Motion.** Tiles move on a critically damped spring (k = 90); selection lifts 0.9 units and adds a 0.25 emissive
 tint plus a grounded ring; end rings pulse ±8 %; steam drifts on the CPU; the round-end shake is 0.15 units decaying.

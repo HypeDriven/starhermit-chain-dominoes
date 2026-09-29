@@ -125,7 +125,7 @@ async function runPass(label, viewport, hasTouch) {
     const ctx = await browser.newContext({ viewport, hasTouch });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-    page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+    page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console ${m.type()}: ${m.text()}`); });
     const SHOT = (n) => `/tmp/chain-dominoes-e2e-${n}-${label}.png`;
 
     await step(`[${label}] load + title visible`, async () => {
@@ -288,6 +288,60 @@ async function runPass(label, viewport, hasTouch) {
         throw new Error('high contrast not applied');
       await page.click('#set-contrast');
       await page.screenshot({ path: SHOT('settings') });
+      await page.locator('#screen-settings .btn-back').click();
+      await page.waitForSelector('#screen-title.active');
+    });
+
+    await step(`[${label}] graphics settings: presets, override, persistence`, async () => {
+      const gfx = () => page.evaluate(() => document.body.dataset.gfxPreset);
+      const summary = () => page.locator('#gfx-summary').textContent();
+      await page.click('#btn-settings');
+      await page.waitForSelector('#screen-settings.active');
+      await page.locator('#set-quality').scrollIntoViewIfNeeded();
+      // Headless Chrome runs on SwiftShader, so Auto resolves to Low.
+      if ((await gfx()) !== 'low') throw new Error(`auto preset should be low, got ${await gfx()}`);
+      const autoText = await page.locator('#set-quality option[value="auto"]').textContent();
+      if (!/Low/.test(autoText)) throw new Error(`auto label missing detected tier: "${autoText}"`);
+      await page.selectOption('#set-quality', 'low');
+      if ((await gfx()) !== 'low' || !/no shadows/.test(await summary())) throw new Error('Low preset not applied');
+      await page.selectOption('#set-quality', 'high');
+      if ((await gfx()) !== 'high') throw new Error('High preset not applied');
+      if (!/2048² shadows/.test(await summary())) throw new Error(`High summary wrong: ${await summary()}`);
+      await page.selectOption('#gfx-shadows', 'high');
+      if (!/4096² shadows/.test(await summary())) throw new Error('shadow override not applied');
+      await page.selectOption('#gfx-bloom', 'off');
+      if (/bloom/.test(await summary())) throw new Error('bloom override not applied');
+      await page.click('#gfx-fps');
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForFunction(() => !!window.__CD_UI, null, { timeout: 10000 });
+      await page.click('#btn-settings');
+      await page.waitForSelector('#screen-settings.active');
+      if ((await gfx()) !== 'high') throw new Error('preset did not survive reload');
+      if ((await page.inputValue('#gfx-bloom')) !== 'off') throw new Error('override did not survive reload');
+      if ((await page.inputValue('#gfx-shadows')) !== 'high') throw new Error('shadow override did not survive reload');
+      if (!(await page.isChecked('#gfx-fps'))) throw new Error('show fps did not survive reload');
+      // Choosing a preset clears overrides.
+      await page.selectOption('#set-quality', 'ultra');
+      if ((await page.inputValue('#gfx-bloom')) !== 'preset') throw new Error('preset did not clear overrides');
+      await page.screenshot({ path: SHOT('graphics-settings') });
+      await page.locator('#screen-settings .btn-back').click();
+      await page.waitForSelector('#screen-title.active');
+      // The table renders at Ultra with its post chain and the FPS readout.
+      await page.click('#btn-practice');
+      await page.waitForSelector('#screen-setup.active');
+      await page.click('#btn-take-seat');
+      await page.waitForSelector('#screen-game.active', { timeout: 15000 });
+      await page.waitForFunction(() => !!(window.__CD_UI.renderer && window.__CD_UI.renderer.composer), null, { timeout: 15000 });
+      if (!(await page.locator('#fps-meter').isVisible())) throw new Error('fps readout not visible');
+      await sleep(1500);
+      await page.screenshot({ path: SHOT('ultra-game') });
+      // Low live: post chain drops, no reload needed.
+      await page.click('#btn-pause');
+      await page.click('#btn-pause-settings');
+      await page.waitForSelector('#screen-settings.active');
+      await page.selectOption('#set-quality', 'low');
+      await page.waitForFunction(() => !window.__CD_UI.renderer.composer, null, { timeout: 5000 });
+      await page.selectOption('#set-quality', 'auto');
       await page.locator('#screen-settings .btn-back').click();
       await page.waitForSelector('#screen-title.active');
     });

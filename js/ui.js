@@ -10,6 +10,7 @@
   const R = () => root.ChainDominoesRules;
   const C = () => root.ChainDominoesContent;
   const P = () => root.ChainDominoesPlatform;
+  const G = () => root.ChainDominoesGfx;
 
   /* ------------------------------------------------------------ helpers */
   function el(tag, cls, text) {
@@ -76,6 +77,7 @@
     init() {
       this._applySettingsClasses();
       this._buildThemeOptions();
+      this._buildGfxPanel();
       this._bindStatic();
       this._buildHelp();
       this._bindKeyboard();
@@ -181,7 +183,6 @@
       bind('vol-effects', 'effects', v => { S().volumes.effects = +v; this.audio.setVolume('effects', +v); });
       bind('vol-ambience', 'ambience', v => { S().volumes.ambience = +v; this.audio.setVolume('ambience', +v); });
       bind('vol-voice', 'voice', v => { S().volumes.voice = +v; this.audio.setVolume('voice', +v); });
-      bind('set-quality', 'quality', v => { S().quality = v; this._applyQuality(); });
       bind('set-theme', 'theme', v => { S().theme = v; this._applyTheme(); });
       bind('set-numbers', 'showNumbers', v => { S().showNumbers = v; this._refreshView(); });
       bind('set-motion', 'reducedMotion', v => { S().reducedMotion = v; if (this.renderer) this.renderer.setReducedMotion(v); });
@@ -247,12 +248,13 @@
       const set = (id, v) => { const i = $(id); if (i) { if (i.type === 'checkbox') i.checked = !!v; else i.value = v; } };
       set('set-muted', s.muted); set('vol-music', s.volumes.music); set('vol-effects', s.volumes.effects);
       set('vol-ambience', s.volumes.ambience); set('vol-voice', s.volumes.voice);
-      set('set-quality', s.quality); set('set-theme', s.theme); set('set-numbers', s.showNumbers);
+      set('set-theme', s.theme); set('set-numbers', s.showNumbers);
       set('set-motion', s.reducedMotion); set('set-contrast', s.highContrast); set('set-largetext', s.largeText);
       set('set-lefthand', s.leftHanded); set('set-cvd', s.colorVision); set('set-timing', s.timingAssist);
       set('set-haptics', s.haptics); set('set-hold', s.holdToConfirm);
       set('set-hints', s.hints); set('set-undo', s.undo);
       set('set-telemetry', P().telemetry.consent);
+      this._syncGfxPanel();
       const bl = $('bindings-list');
       bl.innerHTML = '';
       const names = {
@@ -273,20 +275,176 @@
       this.audio.setMuted(this.store.settings.muted);
     }
 
-    _applyQuality() {
-      if (!this.renderer) return;
-      this.renderer.setQuality(this._qualityTier());
+    /* ---------------------------------------------------------- graphics */
+    // Saved graphics settings: `settings.quality` holds the preset
+    // (auto|low|balanced|high|ultra; legacy "medium" reads as balanced) and
+    // `settings.gfx` holds render_scale, adaptive, show_fps and per-category
+    // overrides. Both persist in the checksummed save document.
+    _gfxSaved() {
+      const s = this.store.settings;
+      if (!s.gfx || typeof s.gfx !== 'object') s.gfx = {};
+      return Object.assign({}, s.gfx, { preset: G().normalizePreset(s.quality) });
     }
 
-    _qualityTier() {
-      const q = this.store.settings.quality;
-      if (q !== 'auto') return q;
-      // mechanism-backed auto tier: mobile UA or few cores -> low/medium
-      const mobile = /Mobi|Android/i.test(navigator.userAgent);
-      const cores = navigator.hardwareConcurrency || 4;
-      if (mobile && cores <= 4) return 'low';
-      if (mobile) return 'medium';
-      return cores >= 8 ? 'high' : 'medium';
+    // GPU probe (once): the unmasked renderer string picks the Auto preset.
+    _gfxDetect() {
+      if (this._gpu !== undefined) return this._gpu;
+      let gpu = '';
+      try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl2') || c.getContext('webgl');
+        if (gl) {
+          const firefox = /Firefox\//.test(navigator.userAgent); // Firefox exposes it via RENDERER
+          const ext = firefox ? null : gl.getExtension('WEBGL_debug_renderer_info');
+          gpu = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+          const lose = gl.getExtension('WEBGL_lose_context');
+          if (lose) lose.loseContext();
+        }
+      } catch (e) { gpu = ''; }
+      const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
+        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      this._gpu = gpu;
+      this._gpuPreset = G().detectPreset(gpu, mobile);
+      return gpu;
+    }
+
+    _gfxResolved() {
+      this._gfxDetect();
+      return G().resolve(this._gfxSaved(), this._gpuPreset);
+    }
+
+    _gfxLocale() { return this._locale || (this._locale = G().pickLocale(navigator.language)); }
+
+    _applyGraphics() {
+      const r = this._gfxResolved();
+      document.body.dataset.gfxPreset = r.preset;
+      document.body.dataset.gfxAuto = r.auto ? '1' : '0';
+      if (this.renderer) this.renderer.setGraphics(r);
+      this._syncGfxPanel();
+    }
+
+    _saveGraphics(key) {
+      this.store.saveNow();
+      P().telemetry.event('settings-change', { key });
+      this._applyGraphics();
+    }
+
+    // Graphics section of Settings: quality preset, render scale, one select
+    // per category ("From preset (…)" by default), adaptive resolution, FPS
+    // readout, summary line and a post-processing-unavailable note.
+    _buildGfxPanel() {
+      const host = $('gfx-panel');
+      if (!host) return;
+      const L = this._gfxLocale(), T = (k, v) => G().t(L, k, v);
+      host.innerHTML = '';
+      const heading = $('s-graphics');
+      if (heading) heading.textContent = T('graphics');
+      const field = (labelText, control, cls) => {
+        const lab = el('label', 'field' + (cls ? ' ' + cls : ''));
+        lab.appendChild(el('span', 'field-label', labelText));
+        lab.appendChild(control);
+        host.appendChild(lab);
+        return lab;
+      };
+      const q = el('select');
+      q.id = 'set-quality';
+      q.dataset.gfx = 'preset';
+      ['auto'].concat(G().PRESETS).forEach(p => { const o = el('option', '', ''); o.value = p; q.appendChild(o); });
+      field(T('quality'), q);
+      q.addEventListener('change', () => {
+        const s = this.store.settings;
+        const next = G().choosePreset(s.gfx, q.value);
+        s.quality = next.preset;
+        delete next.preset;
+        s.gfx = next;
+        this._saveGraphics('quality');
+      });
+
+      const row = el('span', 'gfx-scale-row');
+      const range = el('input');
+      range.type = 'range'; range.id = 'gfx-scale'; range.min = '50'; range.max = '200'; range.step = '10';
+      range.dataset.gfx = 'render_scale';
+      const out = el('output', 'gfx-scale-val', '100%');
+      out.id = 'gfx-scale-val';
+      out.setAttribute('for', 'gfx-scale');
+      row.appendChild(range); row.appendChild(out);
+      field(T('render_scale'), row, 'slider');
+      range.addEventListener('input', () => { out.textContent = range.value + '%'; });
+      range.addEventListener('change', () => {
+        this.store.settings.gfx.render_scale = Math.round(+range.value) / 100;
+        this._saveGraphics('render_scale');
+      });
+
+      Object.keys(G().CATEGORIES).forEach(cat => {
+        const sel = el('select');
+        sel.id = 'gfx-' + cat;
+        sel.dataset.gfxCat = cat;
+        const def = el('option', '', ''); def.value = 'preset'; sel.appendChild(def);
+        G().CATEGORIES[cat].forEach(tier => { const o = el('option', '', G().tierLabel(L, tier)); o.value = tier; sel.appendChild(o); });
+        field(T('cat_' + cat), sel);
+        sel.addEventListener('change', () => {
+          const g = this.store.settings.gfx;
+          if (sel.value === 'preset') delete g[cat]; else g[cat] = sel.value;
+          this._saveGraphics('gfx-' + cat);
+        });
+      });
+
+      const check = (id, key, text) => {
+        const lab = el('label', 'field');
+        const cb = el('input'); cb.type = 'checkbox'; cb.id = id; cb.dataset.gfx = key;
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + text));
+        host.appendChild(lab);
+        cb.addEventListener('change', () => {
+          this.store.settings.gfx[key] = cb.checked;
+          this.audio.toggle();
+          this._saveGraphics(key);
+        });
+      };
+      check('gfx-adaptive', 'adaptive', T('adaptive'));
+      check('gfx-fps', 'show_fps', T('show_fps'));
+
+      const summary = el('p', 'muted gfx-summary');
+      summary.id = 'gfx-summary';
+      summary.setAttribute('aria-live', 'polite');
+      host.appendChild(summary);
+      const note = el('p', 'gfx-note hidden', T('post_failed'));
+      note.id = 'gfx-post-note';
+      note.setAttribute('role', 'note');
+      host.appendChild(note);
+      this._applyGraphics();
+    }
+
+    _syncGfxPanel() {
+      const host = $('gfx-panel');
+      if (!host || !host.firstChild) return;
+      const L = this._gfxLocale(), T = (k, v) => G().t(L, k, v);
+      const r = this._gfxResolved();
+      const saved = this._gfxSaved();
+      const q = $('set-quality');
+      Array.from(q.options).forEach(o => {
+        o.textContent = o.value === 'auto'
+          ? T('auto', { tier: T(this._gpuPreset) }) : T(o.value);
+      });
+      q.value = saved.preset;
+      const scale = Math.round(r.renderScale * 100);
+      $('gfx-scale').value = String(scale);
+      $('gfx-scale-val').textContent = scale + '%';
+      Object.keys(G().CATEGORIES).forEach(cat => {
+        const sel = $('gfx-' + cat);
+        sel.options[0].textContent = T('from_preset', { tier: G().tierLabel(L, G().presetTier(r.preset, cat)) });
+        sel.value = G().CATEGORIES[cat].includes(saved[cat]) ? saved[cat] : 'preset';
+      });
+      $('gfx-adaptive').checked = r.adaptive;
+      $('gfx-fps').checked = r.showFps;
+      const info = this.renderer && this.renderer.graphicsInfo ? this.renderer.graphicsInfo() : null;
+      let pixels = info && info.pixels;
+      if (!pixels) { // no table yet: estimate from the window
+        const pr = Math.min(window.devicePixelRatio || 1, r.cap) * r.scale;
+        pixels = [Math.round(window.innerWidth * pr), Math.round(window.innerHeight * pr)];
+      }
+      $('gfx-summary').textContent = (this._gpu || T('unknown_gpu')) + ' · ' + G().describe(r, pixels, L);
+      const failed = (info && info.postFailed) || (this._postFailed && r.post);
+      $('gfx-post-note').classList.toggle('hidden', !(failed && r.post));
     }
 
     _applyTheme() {
@@ -641,9 +799,10 @@
         if (!root.THREE) throw new Error('three.js not loaded');
         this.renderer = new root.ChainDominoesRender.ChainRenderer(canvas, {
           theme: C().themeById(this.store.settings.theme),
-          quality: this._qualityTier(),
+          gfx: this._gfxResolved(),
           reducedMotion: this.store.settings.reducedMotion,
         });
+        this.renderer.onPostStatus = (failed) => { this._postFailed = failed; this._syncGfxPanel(); };
         this.renderer.onPick = (info) => this._onPick(info);
         $('webgl-fallback').classList.add('hidden');
         if (this.game) this.game.renderer = this.renderer;

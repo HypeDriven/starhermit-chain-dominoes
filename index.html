@@ -101,6 +101,7 @@
     <!-- playfield -->
     <main id="main" class="playfield" aria-label="Domino table">
       <canvas id="glcanvas" aria-hidden="true"></canvas>
+      <div id="fps-meter" class="fps-meter hidden" aria-hidden="true"></div>
       <div id="webgl-fallback" class="webgl-fallback hidden" role="note">
         <p>3D view is unavailable in this browser. The full game remains playable with the on-screen controls below.</p>
       </div>
@@ -193,12 +194,7 @@
         <label class="field slider">Voice <input type="range" id="vol-voice" min="0" max="1" step="0.05"></label>
       </section>
       <section class="panel" aria-labelledby="s-graphics"><h3 id="s-graphics">Graphics</h3>
-        <label class="field">Quality
-          <select id="set-quality">
-            <option value="auto">Auto</option><option value="low">Low</option>
-            <option value="medium">Medium</option><option value="high">High</option>
-          </select>
-        </label>
+        <div id="gfx-panel" class="gfx-panel"></div>
         <label class="field">Table theme <select id="set-theme"></select></label>
         <label class="field"><input type="checkbox" id="set-numbers"> Show numbers on tiles</label>
       </section>
@@ -286,15 +282,32 @@
   <div style="padding:2rem;font-family:sans-serif">Chain Dominoes needs JavaScript to run. Please enable it and reload.</div>
 </noscript>
 
+<script type="importmap">
+  { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
 <script type="module">
-  import * as THREE from './vendor/three.module.min.js';
+  import * as THREE from 'three';
   window.THREE = THREE;
+  // Post-processing and image-based lighting (same three.js revision, r182).
+  // Optional: if any addon fails to load the table renders without post.
+  window.CD_ADDONS = Promise.all([
+    import('three/addons/postprocessing/EffectComposer.js'),
+    import('three/addons/postprocessing/RenderPass.js'),
+    import('three/addons/postprocessing/ShaderPass.js'),
+    import('three/addons/postprocessing/GTAOPass.js'),
+    import('three/addons/postprocessing/UnrealBloomPass.js'),
+    import('three/addons/postprocessing/OutputPass.js'),
+    import('three/addons/postprocessing/SMAAPass.js'),
+    import('three/addons/postprocessing/FXAAPass.js'),
+    import('three/addons/environments/RoomEnvironment.js'),
+  ]).then(mods => Object.assign({}, ...mods)).catch(() => null);
 </script>
 <script src="js/rules.js" defer></script>
 <script src="js/content.js" defer></script>
 <script src="js/ai.js" defer></script>
 <script src="js/audio.js" defer></script>
 <script src="js/platform.js" defer></script>
+<script src="js/gfx.js" defer></script>
 <script src="js/render3d.js" defer></script>
 <script src="js/session.js" defer></script>
 <script src="js/ui.js" defer></script>
