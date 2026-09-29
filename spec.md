@@ -436,3 +436,7 @@ QA bar, as checkable statements:
 - Server-side achievement unlocks and rating changes.
 - Hold-to-confirm placement and vertical hand navigation for the stored bindings.
 - Projected DOM labels over 3D tiles so the canvas and the mirror share one layout model.
+
+## Browser interference
+
+`browser-guard.js` (loaded from `index.html`) suppresses browser UI that gets in the way of play: the right-click context menu, the iOS long-press callout, copy / cut / paste, and page text selection. Text fields (inputs, textareas, selects, contenteditable) keep normal selection, context menu and clipboard behaviour.
