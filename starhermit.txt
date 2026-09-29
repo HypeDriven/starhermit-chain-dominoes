@@ -1,4 +1,5 @@
 name=Chain Dominoes
+description=Match domino ends, empty your hand, and keep your remaining pip count low to outscore your opponents.
 launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
 server=server.js
