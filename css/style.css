@@ -151,6 +151,8 @@ body.high-contrast .title-art { display: none; }
 .tagline { color: var(--muted); margin: 6px 0 0; }
 .title-menu { display: flex; flex-direction: column; gap: 10px; width: min(340px, 88vw); }
 .title-footer { display: flex; gap: 6px; margin-top: 22px; }
+.title-platform { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.title-platform:not(:has(.btn:not(.hidden))) { display: none; }
 .host-status { color: var(--muted); font-size: 0.8rem; min-height: 1.2em; }
 
 /* ---------------------------------------------------------- card lists */

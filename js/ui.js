@@ -10,6 +10,7 @@
   const R = () => root.ChainDominoesRules;
   const C = () => root.ChainDominoesContent;
   const P = () => root.ChainDominoesPlatform;
+  const PT = () => root.PlatformStrings.platformStrings(navigator.language);
   const G = () => root.ChainDominoesGfx;
 
   /* ------------------------------------------------------------ helpers */
@@ -117,6 +118,8 @@
       on('btn-challenge', () => this._setupChallengeList());
       on('btn-learn', () => this._nav('learn'));
       on('btn-hosted', () => this._setupHosted());
+      on('btn-signin', () => P().host.signIn());
+      on('btn-invite', () => this._copyInvite());
       on('btn-profile', () => this._nav('profile'));
       on('btn-settings', () => this._nav('settings'));
       on('btn-help', () => this._nav('help'));
@@ -265,7 +268,7 @@
       };
       Object.keys(names).forEach(k => {
         bl.appendChild(el('dt', '', names[k]));
-        bl.appendChild(el('dd', '', s.bindings[k] || '—'));
+        bl.appendChild(el('dd', '', P().host.keyLabel(k)));
       });
     }
 
@@ -494,6 +497,33 @@
       $('host-status').textContent = P().host.present
         ? 'Connected to StarHermit · cloud saves on'
         : 'Offline mode · progress stays on this device';
+      const signIn = $('btn-signin'), invite = $('btn-invite');
+      signIn.textContent = PT().signIn;
+      signIn.classList.toggle('hidden', !P().host.canSignIn());
+      invite.textContent = PT().invite;
+      invite.classList.toggle('hidden', !P().host.present);
+    }
+
+    async _copyInvite() {
+      const ok = await P().host.copyInvite();
+      this._toast(ok ? PT().inviteCopied : PT().inviteFailed);
+      return ok;
+    }
+
+    platformNotice(key) { this._toast(PT()[key] || key); }
+
+    /** Platform settings KV arrived: re-apply every preference. */
+    reapplySettings() {
+      this._applySettingsClasses();
+      this._applyVolumes();
+      this._applyGraphics();
+      this._syncSettingsForm();
+    }
+
+    /** Effective bindings arrived: refresh the settings list and help card. */
+    refreshBindings() {
+      this._syncSettingsForm();
+      this._buildHelp();
     }
 
     _quickPlay() {
@@ -643,7 +673,7 @@
         panel.appendChild(b);
       };
       if (P().host.present) {
-        mk('Create private invitation', () => this._hostedCreate());
+        mk(PT().invite, () => this._hostedCreate());
         mk('Find public match', () => this._hostedMatchmake());
       }
       mk('Pass-and-play (2 humans, this device)', () => {
@@ -657,34 +687,29 @@
 
     async _hostedCreate() {
       // Private table via the platform matchmaking queue (real games API).
-      try {
-        const res = await P().host.matchmakingJoin({ private: true, ruleset: { targetScore: 100 } });
-        const panel = $('setup-body').querySelector('.panel');
-        const code = res.inviteCode || res.ticketId || res.sessionId;
-        panel.appendChild(el('p', '', 'Invitation queued' + (code ? ': ' + code : '') +
-          '. Hosted tables open when the realtime play update ships — pass-and-play and AI tables are fully playable now.'));
-        this._announce('Invitation created.');
-      } catch (e) {
-        this._announce('Could not create invitation: ' + e.message, 'error');
-      }
+      // Private invitation = the platform share link (friends the recipient
+      // and sends a play invite back).
+      const ok = await this._copyInvite();
+      this._announce(ok ? PT().inviteCopied : PT().inviteFailed, ok ? undefined : 'error');
     }
     async _hostedMatchmake() {
       // Public matchmaking through the real queue: join, poll for a match,
       // and leave the queue afterwards. Table play itself needs the realtime
       // client, which this build does not ship — the UI says so honestly.
       try {
-        const joined = await P().host.matchmakingJoin({ ruleset: { targetScore: 100 } });
-        const ticketId = joined.ticketId || joined.id || null;
+        await P().host.matchmakingJoin();
         this._announce('Searching for a match…');
         const poll = async () => {
           let status = null;
-          try { status = await P().host.matchmakingPoll(ticketId); } catch (e) { return; }
-          if (status && (status.matched || status.sessionId)) {
+          try { status = await P().host.matchmakingPoll(); } catch (e) { return; }
+          if (status && (status.status === 'matched' || status.matched || status.sessionId)) {
             this._announce('Match found.');
             this._toast('Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable.');
-            try { await P().host.matchmakingLeave(ticketId); } catch (e) { /* ok */ }
+            try { await P().host.matchmakingLeave(); } catch (e) { /* ok */ }
           } else if (status && status.error) {
             this._announce('Matchmaking: ' + status.error, 'error');
+          } else if (status && status.status && status.status !== 'queued') {
+            this._announce('Matchmaking ' + status.status + '.');
           } else {
             this._matchPollTimer = setTimeout(poll, 3000);
           }
@@ -1321,7 +1346,9 @@
         b.appendChild(c);
       });
       // controls card generated from current bindings
-      const s = this.store.settings.bindings;
+      const k = (a) => P().host.keyLabel(a);
+      const s = { confirm: k('confirm'), cancel: k('cancel'), pause: k('pause'), endLeft: k('endLeft'), endRight: k('endRight'),
+        draw: k('draw'), pass: k('pass'), undo: k('undo'), hint: k('hint'), cameraReset: k('cameraReset') };
       const c = el('section', 'rule-card');
       c.appendChild(el('h3', '', 'Controls'));
       const demo = el('div', 'rule-demo');
@@ -1351,23 +1378,20 @@
           }
           return;
         }
-        const B = this.store.settings.bindings;
-        const code = e.code;
+        const act = P().host.actionFor(e);
         const view = this.game.buildView();
-        if (code === B.pause || (code === B.cancel && !this.game.selectedTile && this.game.selectedTile !== 0)) {
-          if (code === B.pause) { e.preventDefault(); this.pauseGame(); return; }
-        }
-        if (code === B.undo) { e.preventDefault(); this.game.undo(); return; }
-        if (code === B.hint) { e.preventDefault(); this.game.hint(); return; }
-        if (code === B.cameraReset) { if (this.renderer) this.renderer.resetCamera(); return; }
+        if (act === 'pause') { e.preventDefault(); this.pauseGame(); return; }
+        if (act === 'undo') { e.preventDefault(); this.game.undo(); return; }
+        if (act === 'hint') { e.preventDefault(); this.game.hint(); return; }
+        if (act === 'cameraReset') { if (this.renderer) this.renderer.resetCamera(); return; }
         if (!view || !view.myTurn) return;
 
         const hand = view.myHand;
         const cur = this.game.selectedTile;
         const idx = cur === null ? -1 : hand.indexOf(cur);
-        if (code === B.navLeft || code === B.navRight) {
+        if (act === 'navLeft' || act === 'navRight') {
           e.preventDefault();
-          const dir = code === B.navLeft ? -1 : 1;
+          const dir = act === 'navLeft' ? -1 : 1;
           const next = idx < 0 ? 0 : Math.min(hand.length - 1, Math.max(0, idx + dir));
           this.audio.scrollTick();
           this.game.selectTile(hand[next]);
@@ -1376,16 +1400,16 @@
           if (li) li.querySelector('.domino').focus();
           return;
         }
-        if (code === B.endLeft) { e.preventDefault(); this._commitToEnd('left'); return; }
-        if (code === B.endRight) { e.preventDefault(); this._commitToEnd('right'); return; }
-        if (code === B.draw && view.canDraw) { e.preventDefault(); this._doAction({ type: 'draw' }); return; }
-        if (code === B.pass && view.canPass) { e.preventDefault(); this._doAction({ type: 'pass' }); return; }
-        if (code === B.confirm && cur !== null) {
+        if (act === 'endLeft') { e.preventDefault(); this._commitToEnd('left'); return; }
+        if (act === 'endRight') { e.preventDefault(); this._commitToEnd('right'); return; }
+        if (act === 'draw' && view.canDraw) { e.preventDefault(); this._doAction({ type: 'draw' }); return; }
+        if (act === 'pass' && view.canPass) { e.preventDefault(); this._doAction({ type: 'pass' }); return; }
+        if (act === 'confirm' && cur !== null) {
           e.preventDefault();
           if (view.legalEnds.length === 1) this._commitToEnd(view.legalEnds[0]);
           return;
         }
-        if (code === B.cancel && cur !== null) {
+        if (act === 'cancel' && cur !== null) {
           e.preventDefault();
           this.game.selectTile(cur); // toggles off
           return;

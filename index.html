@@ -10,6 +10,8 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <script src="browser-guard.js"></script>
+<script src="starhermit-sdk.js"></script>
+<script>StarHermit.init();</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -47,6 +49,10 @@
       <button id="btn-settings" class="btn btn-ghost">Settings</button>
       <button id="btn-help" class="btn btn-ghost">How to Play</button>
     </footer>
+    <div class="title-platform">
+      <button id="btn-invite" class="btn btn-ghost hidden">Invite a friend</button>
+      <button id="btn-signin" class="btn hidden">Sign in with StarHermit</button>
+    </div>
     <p id="host-status" class="host-status" role="note"></p>
   </section>
 
@@ -307,6 +313,7 @@
 <script src="js/content.js" defer></script>
 <script src="js/ai.js" defer></script>
 <script src="js/audio.js" defer></script>
+<script src="js/platform-strings.js" defer></script>
 <script src="js/platform.js" defer></script>
 <script src="js/gfx.js" defer></script>
 <script src="js/render3d.js" defer></script>

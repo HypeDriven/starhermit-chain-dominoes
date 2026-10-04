@@ -39,7 +39,7 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | `sfx/` | 39 Opus clips; `manifest.txt` (canonical binding), `manifest.json` (generator input), `manifest.md` (generated) |
 | `assets/` | `key-art.webp` (title backdrop), `results-win.webp`, `results-over.webp` |
 | `coverart.png`, `icon.png`, `favicon.svg` | Store cover (1200x675), touch icon, tab icon |
-| `tests/` | `gfx.test.js`, `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright); `browser.test.js` (raw CDP, legacy); probes |
+| `tests/` | `gfx.test.js`, `platform.test.mjs`, `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright); `browser.test.js` (raw CDP, legacy); probes |
 | `knownissues.md` | QA history: confirmed defects and their fixes |
 
 ## 2. Vision and design pillars
@@ -326,26 +326,29 @@ scroll, and overlay cards scroll internally.
 
 ## 12. StarHermit integration
 
-Detection: the launch token arrives in the URL fragment `#game_token=<jwt>` (optional `&session_id=`), is stripped
-after the read, and is kept in memory only — never persisted. `platform.js host.init` decodes the JWT's `sub` +
-`game_scope` claims (the slug is never hard-coded), sends the token as `Authorization: Bearer`, re-mints it every
-45 min via `POST /api/v1/games/{slug}/launch-token` (60 s retry on failure), and never probes `/api/v1/time` on
-plain static hosting without a token (so an offline run logs no console errors). Hosted mode activates iff a
-token was read.
+`index.html` loads `starhermit-sdk.js` (the canonical client, shipped unchanged) and calls `StarHermit.init()` before
+any game script; `platform.js host` is the game's adapter over `window.StarHermit`. The SDK reads the launch token
+(`#game_token=<jwt>[&session_id=]` from the library, `#access_token=` after a direct sign-in), strips it from the URL,
+keeps it in memory only, takes the slug from `game_scope` (never hard-coded) and renews it via
+`POST /api/v1/games/{slug}/launch-token`. Hosted mode is "signed in". Without a token the game makes no network
+requests at all.
 
 | Platform feature | Used | How |
 |---|---|---|
-| Identity / profile | Yes | Guest profile by default. Hosted: the display name is the profile nickname from `GET /api/v1/users/{sub}/profile` (never usernames, never `/api/v1/me`; `Player <id8>` fallback), shown read-only on the Profile screen with cloud-sync status |
-| Server time | Yes | `GET /api/v1/time` (`now` / `serverTime` / `epochMs`), round-trip-adjusted offset drives the daily seed |
-| Cloud save | Yes | One zip+base64 slot at `GET`/`PUT /api/v1/me/cloud-saves/{slug}` mirroring the checksummed save doc; saves debounce 2 s and flush on `pagehide`/hidden with keepalive; a strictly newer remote document opens the Profile "Save conflict" panel where the player keeps one |
-| Presence / activity | No | No per-game endpoints exist for launch tokens (wiki); the client deliberately never calls them |
-| Leaderboards | Read-only | Clients never submit (wiki): journey/daily results stay on the on-device board and in the cloud-saved doc. The Profile screen reads the platform board via `GET /api/v1/games/{slug}` → `leaderboardId` → `GET /api/v1/leaderboards/{id}/entries`, resolving user ids to nicknames; no `leaderboardId` (or offline) → local records |
-| Achievements | Local | Seven keys unlock idempotently in the local save (part of the cloud-saved doc); the conditions are client-progress based, not script-knowable per session, so no script-owned declaration was added |
-| Sessions / Game Script | Yes | `starhermit.txt` declares `server=server.js`. The script validates membership, connection, command-id shape, duplicates (idempotent `ok:true, duplicate:true`), payload ≤ 512 bytes and rules legality; public views expose other seats only as `handCount` and the boneyard as a count; `tick` forfeits the seat that lets a turn deadline (≥ 5 s, default 45 s) lapse and resolves sessions parked at round-over; `getReplay` returns the ordered log and final hash |
-| Invitations / matchmaking | Lobby only (honest) | "Create private invitation" / "Find public match" use the real platform queue (`POST`/`GET`/`DELETE /api/v1/games/{slug}/matchmaking`, polled every ~3 s); on a match the UI says hosted tables need the realtime play update — the transport (`ws/v1/games?sessionId=&access_token=`, sync-on-open, `{type:'cmd', data:{playerId, commandId, cmd}}` envelopes, `POST /sessions/ai`) is plumbed in `platform.js` but not yet driven by the local Session engine |
-| Telemetry | No | No client telemetry endpoint exists for launch tokens (wiki); consent-gated funnel events stay in-memory only |
-| Token refresh | Yes | `POST /api/v1/games/{slug}/launch-token` every 45 min (memory only, 60 s retry) |
-| Chat, voice, friends panel, rating, containers | No | Not implemented |
+| Sign in | Yes | On `*.starhermit.com` without a token the title shows **Sign in with StarHermit** (`StarHermit.signIn()`); hidden when signed in and when running locally. If renewal is refused a toast says the player was signed out, the button returns and play continues locally |
+| Identity / profile | Yes | Guest profile by default. Signed in: the display name is the profile nickname (`StarHermit.profile()`, `Player <id>` fallback, never `/api/v1/me`), shown read-only on the Profile screen with cloud-sync status |
+| Cloud save | Yes | The checksummed save doc mirrors to the slot `/api/v1/me/cloud-saves/game:<slug>` (`loadSave` / `saveJSON` / `flushSave(true)` on `pagehide`/hidden, 2 s debounce); a strictly newer remote document opens the Profile "Save conflict" panel where the player keeps one. localStorage stays the offline cache |
+| Settings KV | Yes | Theme, graphics, volumes, mute and every accessibility/assist preference are patched to the game's settings KV on change (debounced, only after the KV was read) and applied at boot, where the platform value wins |
+| Controls | Yes | All 14 keyboard actions are declared as `control.*` in `starhermit.txt`; at boot `loadBindings()` resolves the player's platform bindings over the defaults, keydown routes by `event.code` through them, and Settings and How to Play list the effective keys |
+| Invite link | Yes | Signed in, the title shows **Invite a friend** and Hosted Play offers the same button; both copy `StarHermit.inviteLink()` with a confirmation toast |
+| Leaderboards | Read-only | Clients never submit: journey/daily results stay on the on-device board and in the cloud-saved doc. The Profile "Platform" tab reads the game's first platform board via `StarHermit.leaderboard()`, resolving user ids to nicknames; no board (or offline) → local records |
+| Matchmaking | Lobby only (honest) | "Find public match" joins every platform queue (`queues` → `joinQueue`), polls the ticket every ~3 s and cancels it on a match, saying hosted tables need the realtime play update |
+| Server time | No | Launch tokens reach no server-time route; the daily seed uses the local UTC date |
+| Achievements | Local | Seven keys unlock idempotently in the local save (part of the cloud-saved doc); `server.js` declares no platform achievements |
+| Sessions / Game Script | Script only | `server.js` is an authoritative session script in a "Games API style" contract (`createSession` / `submitCommand` / `getSnapshot` / `tick` / `endSession`) tested in Node. It is not the platform host's `game.createSession(ctx)` / `onPlayerMessage(ctx)` contract and the client has no remote-table renderer, so `StarHermit.connect`, session resume, AI sessions, session chat, session invites and replays are not used |
+| Presence, telemetry, chat, voice, realtime rooms | No | Not reachable by launch tokens or not used; consent-gated funnel events stay in memory |
+
+New platform UI strings ship in all nine locales (`js/platform-strings.js`, picked from `navigator.language`).
 
 ## 13. Technical architecture
 
@@ -377,8 +380,10 @@ token was read.
 rules, blocked/domino scoring, match end reasons, ranking, serialization, hash stability, replay, fuzzed commands) +
 `tests/content.test.js` (61: content structure, offline validator over all stages, challenges and lessons with a
 4000-step bound, AI-vs-AI games for every difficulty pairing, daily determinism) + `tests/server.test.js` (21: hidden
-information, membership, duplicate ids, payload cap, turn order, deadlines, replay export). Current result: 174 pass, 0
-fail.
+information, membership, duplicate ids, payload cap, turn order, deadlines, replay export), after `tests/gfx.test.js`
+and `tests/platform.test.mjs` (the host adapter over the SDK with a stubbed fetch and launch fragment: token claims,
+nickname, cloud save round-trip on `game:<slug>`, settings patch, bindings, queue join/poll, invite link; standalone
+makes zero fetches).
 
 `npm run test:e2e` runs 12 steps at 1280x800 and again at 390x844 with touch: title visible; Lesson 1 completes and
 chains into Lesson 2; practice setup starts a 3-seat table; pass-and-play hands the seat between two humans; journey
