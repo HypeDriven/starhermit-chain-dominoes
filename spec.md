@@ -183,6 +183,10 @@ Layouts (`css/style.css`):
 - **Landscape ≤ 900 x 500 px.** Playfield plus a 64 px action column, 30x52 px tiles, tighter tray and banner.
 - Safe areas: every screen and the status bar / tray pad by `env(safe-area-inset-*)`; the toast and captions sit above
   the bottom inset. The title key art is a positioned background that never receives input.
+- **Large screens (> 1600 x 1000 px).** `ui-scale.js` sets `--ui-scale` (1 up to a 1600x1000 viewport, then the
+  smaller of width/1600 and height/1000, capped at 2.5) and `#app` is CSS-`zoom`ed by it (vw/vh lengths inside are
+  divided by it), so every screen, rail, overlay and the hand tray grow proportionally; the 3D table multiplies its
+  pixel ratio by it so it stays sharp.
 
 Must never be cut off: the hand tray (primary control surface), the end caps, Draw/Pass, the pause button, the
 tutorial banner text, and the overlay action buttons (overlay cards scroll internally; results art is dropped below

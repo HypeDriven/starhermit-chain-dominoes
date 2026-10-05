@@ -1153,7 +1153,8 @@
     /* ------------------------------------------------- graphics settings */
     _pixelRatio() {
       const g = this.gfx;
-      return Math.min(window.devicePixelRatio || 1, g.cap || 2) * g.scale * this.adaptiveScale;
+      // × UIScale: the canvas sits inside the zoomed #app, so its backing store grows with the zoom.
+      return Math.min(window.devicePixelRatio || 1, g.cap || 2) * ((window.UIScale && UIScale.value) || 1) * g.scale * this.adaptiveScale;
     }
 
     // Apply a resolved settings object (js/gfx.js resolve()) live.
