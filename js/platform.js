@@ -71,6 +71,8 @@
       this.doc = defaultDoc();
       this._loadLocal();
       this._conflict = null; // {local, remote} preserved for player choice
+      this._cloudBusy = false; // cloud compare in flight: pushes are deferred
+      this._pushDeferred = false;
     }
     _loadLocal() {
       try {
@@ -109,30 +111,44 @@
      * stays the offline cache. */
     async cloudLoad() {
       if (!host.present) return null;
+      // Compare against the local copy as it was at launch: boot writes made
+      // while the load is in flight (account nickname, settings KV) bump
+      // updatedAt and must not make a stale local doc look newer. Their
+      // pushes wait for the compare and stay held while a conflict is open.
+      const base = this.doc.updatedAt;
+      this._cloudBusy = true;
       try {
         const wrapped = await host.cloudLoadRaw();
         if (!wrapped) return null;
         const env = JSON.parse(wrapped);
         if (!env || env.checksum !== checksum(env.payload)) return null;
         const remote = JSON.parse(env.payload);
-        if (remote.updatedAt > this.doc.updatedAt && remote.version === SAVE_VERSION) {
+        if (remote.updatedAt > base && remote.version === SAVE_VERSION) {
           // strict descendant heuristic: remote strictly newer -> conflict ask
           this._conflict = { local: this.doc, remote };
           return this._conflict;
         }
-      } catch (e) { /* offline */ }
+      } catch (e) { /* offline */ } finally {
+        this._cloudBusy = false;
+        if (this._pushDeferred && !this._conflict) this._cloudPush();
+      }
       return null;
     }
     resolveConflict(choice) {
       if (!this._conflict) return;
-      if (choice === 'remote') {
-        this.doc = this._conflict.remote;
-        this.saveNow();
-      } // 'local': keep local, next saveNow pushes it
+      const remote = this._conflict.remote;
       this._conflict = null;
+      if (choice === 'remote') {
+        this.doc = remote;
+        this.saveNow();
+      } else {
+        this._cloudPush(); // keep local: it replaces the cloud doc now
+      }
     }
     _cloudPush() {
       if (!host.present) return;
+      if (this._cloudBusy || this._conflict) { this._pushDeferred = true; return; }
+      this._pushDeferred = false;
       try {
         const payload = JSON.stringify(this.doc);
         host.cloudPush(JSON.stringify({ checksum: checksum(payload), payload }));
