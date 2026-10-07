@@ -1208,8 +1208,25 @@
         !(this.game.mode === 'journey' && res.won && this.game.content && this.game.content.number < 40));
       $('btn-results-retry').textContent = this.game.mode === 'tutorial' ? 'Next lesson' : 'Play again';
       this._resultsRetryOverride = null;
+      this._postToLeaderboard(res);
       this._openOverlay('overlay-results');
       if (res.unlocked.length) { this.audio.success(); this._toast('Achievement unlocked: ' + res.unlocked[0].name); }
+    }
+
+    // Hosted play only: ranked matches (Daily, Challenge, Journey) post the
+    // player's final score and the results card shows the board rank.
+    _postToLeaderboard(res) {
+      const line = $('results-lb');
+      const mode = this.game.mode;
+      const ranked = mode === 'daily' || mode === 'challenge' || mode === 'journey';
+      if (!P().host.present || !ranked || !res.entry) { line.classList.add('hidden'); return; }
+      const pt = PT();
+      line.textContent = pt.lbPosting;
+      line.classList.remove('hidden');
+      P().host.submitScore(res.entry.score).then((r) => {
+        line.textContent = !r.posted ? pt.lbNotPosted
+          : r.rank ? pt.lbRank.replace('{rank}', r.rank) : pt.lbPosted;
+      });
     }
 
     // Results illustration (assets/results-*.webp): decorative; the img's
@@ -1232,6 +1249,7 @@
       $('results-breakdown').innerHTML = '';
       $('results-breakdown').appendChild(el('p', '', def.outro));
       $('results-unlocks').innerHTML = '';
+      $('results-lb').classList.add('hidden');
       $('results-meta').textContent = 'Lessons completed: ' + this.store.progress.tutorials.length + '/6';
       $('btn-results-next').classList.add('hidden');
       $('btn-results-retry').textContent = next ? 'Next lesson' : 'Journey';

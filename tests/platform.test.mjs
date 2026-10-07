@@ -63,6 +63,7 @@ test('standalone: no token, no network', async () => {
     await host.loadBindings(DEFAULTS);
     assert.equal(host.actionFor({ code: 'KeyU' }), 'undo');
     assert.deepEqual(await host.fetchLeaderboard(), { entries: [], local: true });
+    assert.deepEqual(await host.submitScore(120), { posted: false, rank: null });
     await host.syncTime();
     assert.equal(host.inviteLink(), null);
     assert.deepEqual(st.calls, []);

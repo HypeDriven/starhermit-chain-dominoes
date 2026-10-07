@@ -393,6 +393,19 @@
       const ticket = await s.joinQueue(keys);
       return ticket || {};
     },
+    /** Post a finished match score to the high-score board (score-script.js).
+     * Resolves { posted, rank } — rank on the board, or null. Standalone: no call. */
+    submitScore(total) {
+      const s = sdk();
+      if (!s || !s.signedIn) return Promise.resolve({ posted: false, rank: null });
+      return s.submitScores({ 'high-score': total }).then((keys) => {
+        if (keys.indexOf('high-score') < 0) return { posted: false, rank: null };
+        return s.leaderboard('high-score', { pageSize: 100 }).then((r) => {
+          const me = (r.items || []).filter((i) => i.userId === s.userId)[0];
+          return { posted: true, rank: me ? me.rank : null };
+        }, () => ({ posted: true, rank: null }));
+      }, () => ({ posted: false, rank: null }));
+    },
     matchmakingPoll() { const s = sdk(); return s ? s.matchStatus() : Promise.resolve(null); },
     matchmakingLeave() { const s = sdk(); return s ? s.cancelMatch() : Promise.resolve(null); },
 
