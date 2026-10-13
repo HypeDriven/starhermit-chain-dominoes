@@ -56,7 +56,7 @@
         const g = this.ctx.createGain();
         g.gain.value = this.volumes[b];
         g.connect(this.master);
-        this.buses[b] = g;
+        this.buses[b] = (globalThis.GameOptions ? globalThis.GameOptions.tagBus(g, b) : g);
       }
       this._loadSamples();
       return true;
@@ -83,7 +83,7 @@
       if (!this.ctx) return false;
       const buf = this._samples[name];
       if (!buf) return false;
-      const src = this.ctx.createBufferSource();
+      const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), name) : this.ctx.createBufferSource());
       src.buffer = buf;
       src.connect(this.buses.effects);
       src.start(this.ctx.currentTime + (delay || 0));
@@ -125,7 +125,7 @@
     }
 
     _osc(type, freq, t0, dur, gainPeak, dest) {
-      const o = this.ctx.createOscillator();
+      const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createOscillator(), null) : this.ctx.createOscillator());
       o.type = type; o.frequency.setValueAtTime(freq, t0);
       const g = this._env(o, t0, 0.005, gainPeak, dur * 0.6, gainPeak * 0.2, dur * 0.4);
       g.connect(dest);
@@ -137,7 +137,7 @@
       const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-      const src = this.ctx.createBufferSource();
+      const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), null) : this.ctx.createBufferSource());
       src.buffer = buf;
       const f = this.ctx.createBiquadFilter();
       f.type = type || 'bandpass'; f.frequency.value = filterFreq; f.Q.value = q;
@@ -302,7 +302,7 @@
         last = (last + 0.02 * w) / 1.02;
         d[i] = last * 3.5;
       }
-      const src = this.ctx.createBufferSource();
+      const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), null) : this.ctx.createBufferSource());
       src.buffer = buf; src.loop = true;
       const f = this.ctx.createBiquadFilter();
       f.type = 'lowpass'; f.frequency.value = 420;
@@ -330,7 +330,7 @@
         const t = this.ctx.currentTime;
         const ch = chords[step % chords.length];
         ch.forEach(f => {
-          const o = this.ctx.createOscillator();
+          const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createOscillator(), null) : this.ctx.createOscillator());
           o.type = 'sine'; o.frequency.value = f * (this.rng ? (0.999 + this.rng.next() * 0.002) : 1);
           const g = this.ctx.createGain();
           g.gain.setValueAtTime(0.0001, t);
