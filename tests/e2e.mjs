@@ -17,6 +17,7 @@
  * Run: npm run test:e2e
  */
 import { chromium } from 'playwright-core';
+import { stubStarHermit, launchToken } from './starhermit-e2e.mjs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -344,6 +345,64 @@ async function runPass(label, viewport, hasTouch) {
       await page.selectOption('#set-quality', 'auto');
       await page.locator('#screen-settings .btn-back').click();
       await page.waitForSelector('#screen-title.active');
+    });
+
+    // Signed in against a stubbed StarHermit API whose account prefers fr-CA:
+    // Automatic resolves to Canadian French; switching to Italian from Settings
+    // during a paused match re-renders the table UI without touching the match,
+    // syncs ui.language and Report a problem posts a bug report.
+    await step(`[${label}] Language: Automatic follows the StarHermit preference; live switch mid-match; ui.language; report a problem`, async () => {
+      const calls = await stubStarHermit(page, { preferredLanguage: 'fr-CA' });
+      await page.goto('about:blank');
+      await page.goto(`${BASE}/index.html#game_token=${launchToken()}`, { waitUntil: 'load' });
+      await page.waitForFunction(() => !!window.__CD_UI, null, { timeout: 10000 });
+      await page.waitForFunction(() => document.documentElement.lang === 'fr-CA' && document.getElementById('btn-quick-play').textContent === 'Jouer');
+      await page.click('#btn-practice');
+      await page.waitForSelector('#screen-setup.active');
+      if ((await page.locator('#btn-take-seat').textContent()) !== 'Prendre place') throw new Error('setup not French');
+      await page.click('#btn-take-seat');
+      await page.waitForSelector('#screen-game.active', { timeout: 15000 });
+      await page.waitForFunction(() => window.__CD_UI.game?.state?.phase === 'active', null, { timeout: 15000 });
+      await page.click('#btn-pause');
+      await page.waitForSelector('#overlay-pause:not(.hidden)');
+      if ((await page.locator('#pause-heading').textContent()) !== 'En pause') throw new Error('pause not French');
+      const before = await page.evaluate(() => JSON.stringify(window.__CD_UI.game.state.chain) + window.__CD_UI.game.state.turn);
+      await page.click('#btn-pause-settings');
+      await page.waitForSelector('#screen-settings.active');
+      const choice = page.locator('[data-game-language="choice"]');
+      await choice.scrollIntoViewIfNeeded();
+      const auto = await choice.locator('option').first().textContent();
+      if (auto !== 'Automatique — Français (Canada)') throw new Error('Automatic label not resolved: ' + auto);
+      if (await page.locator('[data-game-language="choice"]').count() !== 1) throw new Error('expected exactly one language selector');
+      await choice.selectOption('it-IT');
+      await page.waitForFunction(() => document.documentElement.lang === 'it-IT' &&
+        document.getElementById('settings-heading').textContent === 'Impostazioni' &&
+        document.getElementById('hand-label').textContent.startsWith('La tua mano') &&
+        document.getElementById('btn-hint').textContent.startsWith('Suggerimento'));
+      await page.waitForFunction(() => /Salvato/.test(document.querySelector('[data-game-language="status"]')?.textContent || ''));
+      if (calls.settings['ui.language']?.choice !== 'it-IT') throw new Error('ui.language not saved: ' + JSON.stringify(calls.settings));
+      const report = page.locator('[data-game-report="title"]');
+      await report.scrollIntoViewIfNeeded();
+      await report.fill('Test report');
+      await page.click('[data-game-report="send"]');
+      await page.waitForFunction(() => /Grazie/.test(document.querySelector('[data-game-report="status"]').textContent));
+      if (!calls.reports?.[0] || calls.reports[0].kind !== 'bug') throw new Error('report not posted');
+      const spill = await page.evaluate(() => {
+        const w = document.documentElement.clientWidth;
+        return [...document.querySelectorAll('#screen-settings select, #screen-settings input, #screen-settings button, #screen-settings textarea')]
+          .filter((n) => n.offsetParent && n.getBoundingClientRect().right > w + 1).map((n) => n.outerHTML.slice(0, 60));
+      });
+      if (spill.length) throw new Error('settings controls cut off: ' + spill.join(','));
+      await page.screenshot({ path: SHOT('language') });
+      const after = await page.evaluate(() => JSON.stringify(window.__CD_UI.game.state.chain) + window.__CD_UI.game.state.turn);
+      if (after !== before) throw new Error('the match changed during the language switch');
+      if ((await page.locator('#pause-heading').textContent()) !== 'In pausa') throw new Error('pause overlay not re-rendered');
+      await choice.selectOption('auto');
+      await page.waitForFunction(() => document.documentElement.lang === 'fr-CA');
+      await page.locator('#screen-settings .btn-back').click();
+      await page.waitForSelector('#screen-title.active');
+      await page.waitForFunction(() => document.getElementById('btn-quick-play').textContent === 'Jouer');
+      await page.unroute(/\/api\/v1\//);
     });
 
     await ctx.close();

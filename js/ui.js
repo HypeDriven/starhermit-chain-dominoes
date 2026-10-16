@@ -10,8 +10,16 @@
   const R = () => root.ChainDominoesRules;
   const C = () => root.ChainDominoesContent;
   const P = () => root.ChainDominoesPlatform;
-  const PT = () => root.PlatformStrings.platformStrings(navigator.language);
+  // One game language (js/i18n.js → sh-language.js): tr() translates English
+  // keys; platform and graphics strings follow the same locale.
+  const lang = () => (root.CDMI18N ? root.CDMI18N.lang : navigator.language);
+  const tr = (key, vars) => (root.CDMI18N ? root.CDMI18N.T(key, vars) : key);
+  const N = (s) => s;
+  const pn = (name) => tr(name); // built-in seat names ("You", "Guide", "Player 1") translate; real names stay
+  const PT = () => root.PlatformStrings.platformStrings(lang());
   const G = () => root.ChainDominoesGfx;
+  const contentName = (c) => (c && c.kind === 'daily' ? C().dailyNameText(c, tr) : tr((c && (c.name || c.title)) || ''));
+  const contentGoal = (c) => (c && c.kind === 'daily' ? C().dailyGoalText(c, tr) : tr((c && (c.goal || c.blurb)) || ''));
 
   /* ------------------------------------------------------------ helpers */
   function el(tag, cls, text) {
@@ -37,7 +45,7 @@
     const d = document.createElement(opts.static ? 'div' : 'button');
     d.className = 'domino' + (opts.flat ? ' flat' : '') + (opts.back ? ' back' : '');
     d.setAttribute('role', opts.static ? 'img' : 'option');
-    const label = opts.back ? 'face-down tile' : (a + ' | ' + b + ' domino');
+    const label = opts.back ? tr('face-down tile') : tr('{a} | {b} domino', { a, b });
     d.setAttribute('aria-label', label + (opts.extraLabel ? ', ' + opts.extraLabel : ''));
     if (!opts.back) {
       d.appendChild(halfEl(a));
@@ -242,7 +250,7 @@
     _buildThemeOptions() {
       const sel = $('set-theme');
       sel.innerHTML = '';
-      C().THEMES.forEach(t => sel.appendChild(el('option', '', t.name)).value = t.id);
+      C().THEMES.forEach(t => sel.appendChild(el('option', '', tr(t.name))).value = t.id);
       sel.childNodes.forEach((o, i) => o.value = C().THEMES[i].id);
     }
 
@@ -261,13 +269,13 @@
       const bl = $('bindings-list');
       bl.innerHTML = '';
       const names = {
-        navLeft: 'Navigate left', navRight: 'Navigate right', navUp: 'Navigate up', navDown: 'Navigate down',
-        confirm: 'Confirm', cancel: 'Cancel', pause: 'Pause', undo: 'Undo', hint: 'Hint',
-        cameraReset: 'Reset camera', endLeft: 'Play on left end', endRight: 'Play on right end',
-        draw: 'Draw', pass: 'Pass',
+        navLeft: N('Navigate left'), navRight: N('Navigate right'), navUp: N('Navigate up'), navDown: N('Navigate down'),
+        confirm: N('Confirm'), cancel: N('Cancel'), pause: N('Pause'), undo: N('Undo'), hint: N('Hint'),
+        cameraReset: N('Reset camera'), endLeft: N('Play on left end'), endRight: N('Play on right end'),
+        draw: N('Draw'), pass: N('Pass'),
       };
       Object.keys(names).forEach(k => {
-        bl.appendChild(el('dt', '', names[k]));
+        bl.appendChild(el('dt', '', tr(names[k])));
         bl.appendChild(el('dd', '', P().host.keyLabel(k)));
       });
     }
@@ -316,7 +324,7 @@
       return G().resolve(this._gfxSaved(), this._gpuPreset);
     }
 
-    _gfxLocale() { return this._locale || (this._locale = G().pickLocale(navigator.language)); }
+    _gfxLocale() { return G().pickLocale(lang()); }
 
     _applyGraphics() {
       const r = this._gfxResolved();
@@ -474,7 +482,7 @@
     }
 
     _resetSave() {
-      if (!confirm('Erase all local progress? This cannot be undone.')) return;
+      if (!confirm(tr('Erase all local progress? This cannot be undone.'))) return;
       try { localStorage.removeItem('chaindominoes.save.v1'); } catch (e) { /* ok */ }
       location.reload();
     }
@@ -493,10 +501,10 @@
       // which was otherwise unreachable because the entry was hidden.
       const hosted = $('btn-hosted');
       hosted.classList.remove('hidden');
-      hosted.textContent = P().host.present ? 'Hosted Play' : 'Pass & Play';
+      hosted.textContent = tr(P().host.present ? 'Hosted Play' : 'Pass & Play');
       $('host-status').textContent = P().host.present
-        ? 'Connected to StarHermit · cloud saves on'
-        : 'Offline mode · progress stays on this device';
+        ? tr('Connected to StarHermit · cloud saves on')
+        : tr('Offline mode · progress stays on this device');
       const signIn = $('btn-signin'), invite = $('btn-invite');
       signIn.textContent = PT().signIn;
       signIn.classList.toggle('hidden', !P().host.canSignIn());
@@ -504,13 +512,41 @@
       invite.classList.toggle('hidden', !P().host.present);
     }
 
+    /**
+     * Language change: the static markup is re-applied by js/i18n.js; every
+     * string built here is rebuilt in place. The match in play, its clock and
+     * the 3D table are untouched.
+     */
+    relocalize() {
+      this.refreshTitle();
+      const theme = $('set-theme').value;
+      this._buildThemeOptions();
+      $('set-theme').value = theme;
+      this._buildGfxPanel();
+      this._syncSettingsForm();
+      this._buildHelp();
+      if (this.screen === 'journey') this._buildJourneyList();
+      if (this.screen === 'learn') this._buildTutorialList();
+      if (this.screen === 'profile') this._buildProfile();
+      if (this.screen === 'setup' && this._setupRebuild) this._setupRebuild();
+      if (this.game && this._chromeArgs) this._buildGameChrome(...this._chromeArgs);
+      if (this.game) this._refreshView();
+      if (this._roundData && this.game && !$('overlay-round').classList.contains('hidden')) this._showRoundOverlay(this._roundData);
+      if (!$('overlay-results').classList.contains('hidden')) {
+        if (this._resultsData) this._showResults(this._resultsData, true);
+        else if (this._tutorialDone) this._showTutorialComplete(this._tutorialDone, true);
+      }
+      const t = $('overlay-achievement');
+      if (!t.classList.contains('hidden') && typeof this._toastText === 'function') t.textContent = this._toastText();
+    }
+
     async _copyInvite() {
       const ok = await P().host.copyInvite();
-      this._toast(ok ? PT().inviteCopied : PT().inviteFailed);
+      this._toast(() => (ok ? PT().inviteCopied : PT().inviteFailed));
       return ok;
     }
 
-    platformNotice(key) { this._toast(PT()[key] || key); }
+    platformNotice(key) { this._toast(() => PT()[key] || key); }
 
     /** Platform settings KV arrived: re-apply every preference. */
     reapplySettings() {
@@ -551,12 +587,12 @@
       const body = $('setup-body');
       body.innerHTML = '';
       const panel = el('section', 'panel');
-      panel.appendChild(el('h3', '', 'This table'));
+      panel.appendChild(el('h3', '', tr('This table')));
       const grid = el('div', 'fact-grid');
       facts.forEach(([k, v]) => grid.appendChild(this._fact(k, v)));
       panel.appendChild(grid);
       if (extraHtml) panel.appendChild(extraHtml);
-      const start = el('button', 'btn btn-primary btn-big', 'Take a seat');
+      const start = el('button', 'btn btn-primary btn-big', tr('Take a seat'));
       start.id = 'btn-take-seat';
       start.addEventListener('click', () => this._startMatch(mode, content, config));
       panel.appendChild(start);
@@ -567,14 +603,14 @@
     }
 
     _rulesetFacts(ruleset, players, ranked) {
-      const drawLabel = { 'until-playable': 'Draw until playable', one: 'One draw per turn', none: 'Boneyard closed' }[ruleset.drawRule || 'until-playable'];
+      const drawLabel = { 'until-playable': N('Draw until playable'), one: N('One draw per turn'), none: N('Boneyard closed') }[ruleset.drawRule || 'until-playable'];
       return [
-        ['Players', String(players)],
-        ['Target', ruleset.targetScore > 0 ? ruleset.targetScore + ' pts' : 'Highest score'],
-        ['Rounds max', String(ruleset.maxRounds || 12)],
-        ['Drawing', drawLabel],
-        ['Ranked', ranked ? 'Yes' : 'No'],
-        ['~Duration', '5–15 min'],
+        [tr('Players'), String(players)],
+        [tr('Target'), ruleset.targetScore > 0 ? tr('{n} pts', { n: ruleset.targetScore }) : tr('Highest score')],
+        [tr('Rounds max'), String(ruleset.maxRounds || 12)],
+        [tr('Drawing'), tr(drawLabel)],
+        [tr('Ranked'), tr(ranked ? 'Yes' : 'No')],
+        [tr('~Duration'), tr('5–15 min')],
       ];
     }
 
@@ -587,20 +623,21 @@
         return input;
       };
       const selPlayers = el('select');
-      [2, 3, 4].forEach(n => selPlayers.appendChild(el('option', '', n + ' players')).value = n);
+      [2, 3, 4].forEach(n => selPlayers.appendChild(el('option', '', tr('{n} players', { n }))).value = n);
       const selDiff = el('select');
-      ['easy', 'medium', 'hard'].forEach(d => selDiff.appendChild(el('option', '', d)).value = d);
+      [N('easy'), N('medium'), N('hard')].forEach(d => selDiff.appendChild(el('option', '', tr(d))).value = d);
       selDiff.value = 'medium';
       const selTarget = el('select');
-      [50, 100, 150].forEach(t => selTarget.appendChild(el('option', '', t + ' points')).value = t);
+      [50, 100, 150].forEach(t => selTarget.appendChild(el('option', '', tr('{n} points', { n: t }))).value = t);
       const selDraw = el('select');
-      [['until-playable', 'Draw until playable'], ['one', 'One draw per turn'], ['none', 'Boneyard closed']]
-        .forEach(([v, l]) => selDraw.appendChild(el('option', '', l)).value = v);
-      mk('Players', selPlayers); mk('Difficulty', selDiff); mk('Target score', selTarget); mk('Draw rule', selDraw);
-      const note = el('p', 'muted', 'Practice is unranked: undo and hints are on, ratings are untouched.');
+      [['until-playable', N('Draw until playable')], ['one', N('One draw per turn')], ['none', N('Boneyard closed')]]
+        .forEach(([v, l]) => selDraw.appendChild(el('option', '', tr(l))).value = v);
+      mk(tr('Players'), selPlayers); mk(tr('Difficulty'), selDiff); mk(tr('Target score'), selTarget); mk(tr('Draw rule'), selDraw);
+      const note = el('p', 'muted', tr('Practice is unranked: undo and hints are on, ratings are untouched.'));
       form.appendChild(note);
 
-      this._showSetup('Practice', [['Players', '2'], ['Target', '100 pts'], ['Ranked', 'No']], null, null, 'practice', form);
+      this._showSetup(tr('Practice'), [[tr('Players'), '2'], [tr('Target'), tr('{n} pts', { n: 100 })], [tr('Ranked'), tr('No')]], null, null, 'practice', form);
+      this._setupRebuild = () => this._setupPractice();
       // rewire start to read the form
       const panel = $('setup-body').querySelector('.panel');
       const start = panel.querySelector('.btn-primary');
@@ -628,25 +665,27 @@
       const cfg = C().dailyToConfig(daily, this.store.profile.name);
       const done = this.store.progress.daily[daily.dateKey];
       const info = el('div');
-      info.appendChild(el('p', '', daily.goal));
-      info.appendChild(el('p', 'muted', 'One shared seed for everyone today (UTC). Ranked: undo and hints are off.' +
-        (done ? ' You already played today — replaying is for fun and won\'t replace your result.' : '')));
-      this._showSetup(daily.name, this._rulesetFacts(daily.ruleset, daily.players, true), daily, cfg, 'daily', info);
+      info.appendChild(el('p', '', contentGoal(daily)));
+      info.appendChild(el('p', 'muted', tr('One shared seed for everyone today (UTC). Ranked: undo and hints are off.') +
+        (done ? ' ' + tr('You already played today — replaying is for fun and won\'t replace your result.') : '')));
+      this._showSetup(contentName(daily), this._rulesetFacts(daily.ruleset, daily.players, true), daily, cfg, 'daily', info);
+      this._setupRebuild = () => this._setupDaily();
     }
 
     _setupChallengeList() {
       const body = $('setup-body');
-      $('setup-heading').textContent = 'Challenges';
+      $('setup-heading').textContent = tr('Challenges');
+      this._setupRebuild = () => this._setupChallengeList();
       body.innerHTML = '';
       C().CHALLENGES.forEach(ch => {
         const panel = el('section', 'panel');
-        panel.appendChild(el('h3', '', ch.name));
-        panel.appendChild(el('p', '', ch.goal));
+        panel.appendChild(el('h3', '', tr(ch.name)));
+        panel.appendChild(el('p', '', tr(ch.goal)));
         const grid = el('div', 'fact-grid');
         this._rulesetFacts(ch.ruleset, ch.players, true).forEach(([k, v]) => grid.appendChild(this._fact(k, v)));
-        if (ch.timeLimitSec) grid.appendChild(this._fact('Time limit', fmtTime(ch.timeLimitSec * 1000)));
+        if (ch.timeLimitSec) grid.appendChild(this._fact(tr('Time limit'), fmtTime(ch.timeLimitSec * 1000)));
         panel.appendChild(grid);
-        const start = el('button', 'btn btn-primary', 'Start challenge');
+        const start = el('button', 'btn btn-primary', tr('Start challenge'));
         start.addEventListener('click', () => {
           const cfg = C().challengeToConfig(ch, this.store.profile.name);
           this._startMatch('challenge', ch, cfg);
@@ -659,13 +698,14 @@
 
     _setupHosted() {
       const body = $('setup-body');
-      $('setup-heading').textContent = P().host.present ? 'Hosted Play' : 'Pass & Play';
+      $('setup-heading').textContent = tr(P().host.present ? 'Hosted Play' : 'Pass & Play');
+      this._setupRebuild = () => this._setupHosted();
       body.innerHTML = '';
       const panel = el('section', 'panel');
-      panel.appendChild(el('h3', '', 'Play with friends'));
+      panel.appendChild(el('h3', '', tr('Play with friends')));
       panel.appendChild(el('p', '', P().host.present
-        ? 'Create a private invitation or join public matchmaking. Hosted sessions are authoritative: the server validates every move.'
-        : 'Hosted play needs the StarHermit shell. Offline, you can still pass-and-play or face the AI.'));
+        ? tr('Create a private invitation or join public matchmaking. Hosted sessions are authoritative: the server validates every move.')
+        : tr('Hosted play needs the StarHermit shell. Offline, you can still pass-and-play or face the AI.')));
       const mk = (label, fn, id) => {
         const b = el('button', 'btn', label);
         if (id) b.id = id;
@@ -674,9 +714,9 @@
       };
       if (P().host.present) {
         mk(PT().invite, () => this._hostedCreate());
-        mk('Find public match', () => this._hostedMatchmake());
+        mk(tr('Find public match'), () => this._hostedMatchmake());
       }
-      mk('Pass-and-play (2 humans, this device)', () => {
+      mk(tr('Pass-and-play (2 humans, this device)'), () => {
         const cfg = { seed: 'hotseat:' + Date.now(), ruleset: { targetScore: 100 }, players: [
           { id: 'p1', name: 'Player 1', kind: 'human' }, { id: 'p2', name: 'Player 2', kind: 'human' }] };
         this._startMatch('practice', { id: 'hotseat', name: 'Pass and Play' }, cfg);
@@ -698,25 +738,25 @@
       // client, which this build does not ship — the UI says so honestly.
       try {
         await P().host.matchmakingJoin();
-        this._announce('Searching for a match…');
+        this._announce(tr('Searching for a match…'));
         const poll = async () => {
           let status = null;
           try { status = await P().host.matchmakingPoll(); } catch (e) { return; }
           if (status && (status.status === 'matched' || status.matched || status.sessionId)) {
-            this._announce('Match found.');
-            this._toast('Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable.');
+            this._announce(tr('Match found.'));
+            this._toast(() => tr('Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable.'));
             try { await P().host.matchmakingLeave(); } catch (e) { /* ok */ }
           } else if (status && status.error) {
-            this._announce('Matchmaking: ' + status.error, 'error');
+            this._announce(tr('Matchmaking: {error}', { error: status.error }), 'error');
           } else if (status && status.status && status.status !== 'queued') {
-            this._announce('Matchmaking ' + status.status + '.');
+            this._announce(tr('Matchmaking: {error}', { error: status.status }));
           } else {
             this._matchPollTimer = setTimeout(poll, 3000);
           }
         };
         this._matchPollTimer = setTimeout(poll, 1500);
       } catch (e) {
-        this._announce('Matchmaking unavailable: ' + e.message, 'error');
+        this._announce(tr('Matchmaking unavailable: {error}', { error: e.message }), 'error');
       }
     }
 
@@ -728,10 +768,10 @@
         const li = el('li');
         const done = this.store.progress.tutorials.includes(t.id);
         const box = el('div');
-        box.appendChild(el('div', 'card-title', (i + 1) + '. ' + t.title));
-        box.appendChild(el('div', 'card-desc', t.intro));
+        box.appendChild(el('div', 'card-title', (i + 1) + '. ' + tr(t.title)));
+        box.appendChild(el('div', 'card-desc', tr(t.intro)));
         li.appendChild(box);
-        const go = el('button', 'btn btn-primary card-go', done ? 'Replay' : 'Start');
+        const go = el('button', 'btn btn-primary card-go', tr(done ? 'Replay' : 'Start'));
         go.addEventListener('click', () => this._startTutorial(t));
         li.appendChild(go);
         if (done) li.appendChild(el('span', 'card-done', '✓'));
@@ -751,11 +791,11 @@
         const li = el('li', 'journey-item' + (unlocked ? '' : ' locked') + (s.mastery ? ' mastery' : ''));
         li.appendChild(el('span', 'journey-num', s.mastery ? '★' : String(s.number)));
         const box = el('div');
-        box.appendChild(el('div', 'journey-name', s.name));
+        box.appendChild(el('div', 'journey-name', tr(s.name)));
         box.appendChild(el('div', 'journey-meta',
-          s.players + 'P · ' + (s.ai.join('/')) + ' AI · first to ' + s.targetScore +
-          (s.drawRule === 'none' ? ' · no draws' : s.drawRule === 'one' ? ' · 1 draw/turn' : '') +
-          (s.maxRounds ? ' · ≤' + s.maxRounds + ' rounds' : '')));
+          tr('{players}P · {ai} AI · first to {n}', { players: s.players, ai: s.ai.map(d => tr(d)).join('/'), n: s.targetScore }) +
+          (s.drawRule === 'none' ? ' · ' + tr('no draws') : s.drawRule === 'one' ? ' · ' + tr('1 draw/turn') : '') +
+          (s.maxRounds ? ' · ' + tr('≤{n} rounds', { n: s.maxRounds }) : '')));
         li.appendChild(box);
         const starTxt = '★'.repeat(stars) + '☆'.repeat(3 - stars);
         li.appendChild(el('span', 'journey-stars', unlocked ? starTxt : '🔒'));
@@ -840,21 +880,25 @@
     _buildGameChrome(mode, content, config) {
       const obj = $('hud-objective');
       const target = config.ruleset.targetScore;
-      obj.textContent = mode === 'tutorial' ? ('Lesson: ' + content.title)
-        : (content && (content.goal || content.blurb)) ||
-          ('First to ' + (target > 0 ? target : 'best score') + (config.ruleset.drawRule === 'none' ? ' · boneyard closed' : ''));
-      obj.setAttribute('aria-label', 'Objective. ' + obj.textContent);
+      this._chromeArgs = [mode, content, config];
+      obj.textContent = mode === 'tutorial' ? tr('Lesson: {text}', { text: tr(content.title) })
+        : (content && (content.goal || content.blurb) && contentGoal(content)) ||
+          ((target > 0 ? tr('First to {n}', { n: target }) : tr('First to best score')) + (config.ruleset.drawRule === 'none' ? ' · ' + tr('boneyard closed') : ''));
+      obj.setAttribute('aria-label', tr('Objective. {text}', { text: obj.textContent }));
       $('rail-ruleset').innerHTML = '';
       const rl = $('rail-ruleset');
-      const drawLabel = { 'until-playable': 'Draw until you can play', one: 'One draw per turn', none: 'No drawing' }[config.ruleset.drawRule || 'until-playable'];
-      rl.appendChild(el('div', 'muted', drawLabel + ' · max ' + (config.ruleset.maxRounds || 12) + ' rounds'));
+      const drawLabel = { 'until-playable': N('Draw until you can play'), one: N('One draw per turn'), none: N('No drawing') }[config.ruleset.drawRule || 'until-playable'];
+      rl.appendChild(el('div', 'muted', tr(drawLabel) + ' · ' + tr('max {n} rounds', { n: config.ruleset.maxRounds || 12 })));
       const banner = $('tutorial-banner');
       banner.classList.toggle('hidden', mode !== 'tutorial');
       // drawer toggle for compact layouts
       if (!$('toggle-rail-left')) {
-        const t = el('button', 'btn btn-ghost drawer-toggle', '☰ Table');
+        const t = el('button', 'btn btn-ghost drawer-toggle', '☰ ' + tr('Table'));
         t.id = 'toggle-rail-left';
-        t.setAttribute('aria-label', 'Toggle table panel');
+        t.setAttribute('aria-label', tr('Toggle table panel'));
+      } else {
+        $('toggle-rail-left').textContent = '☰ ' + tr('Table');
+        $('toggle-rail-left').setAttribute('aria-label', tr('Toggle table panel'));
         t.addEventListener('click', () => $('rail-left').classList.toggle('open'));
         $('screen-game').appendChild(t);
       }
@@ -913,7 +957,7 @@
       sc.innerHTML = '';
       view.players.forEach(p => {
         const chip = el('span', 'score-chip' + (p.isTurn ? ' turn' : ''),
-          p.name + ' ' + p.score + ' ');
+          pn(p.name) + ' ' + p.score + ' ');
         chip.appendChild(el('span', 'pip', '(' + p.handCount + ')'));
         sc.appendChild(chip);
       });
@@ -924,18 +968,18 @@
         const ends = el('div', 'big-ends');
         ends.appendChild(el('span', '', String(view.leftEnd)));
         ends.appendChild(el('span', '', String(view.rightEnd)));
-        ro.appendChild(el('div', 'muted', 'Open ends'));
+        ro.appendChild(el('div', 'muted', tr('Open ends')));
         ro.appendChild(ends);
       } else {
-        ro.appendChild(el('div', 'muted', 'No tiles on the table yet.'));
+        ro.appendChild(el('div', 'muted', tr('No tiles on the table yet.')));
       }
-      $('rail-round').textContent = 'Round ' + view.round +
-        (view.targetScore > 0 ? ' · target ' + view.targetScore : ' · single match to best score');
-      $('rail-boneyard').textContent = 'Boneyard: ' + view.boneyardCount + ' tile' + (view.boneyardCount === 1 ? '' : 's');
+      $('rail-round').textContent = tr('Round {n}', { n: view.round }) +
+        (view.targetScore > 0 ? ' · ' + tr('target {n}', { n: view.targetScore }) : ' · ' + tr('single match to best score'));
+      $('rail-boneyard').textContent = tr(view.boneyardCount === 1 ? 'Boneyard: {n} tile' : 'Boneyard: {n} tiles', { n: view.boneyardCount });
       const ti = $('turn-indicator');
       ti.textContent = view.phase === 'active'
-        ? ((view.myTurn && !view.hotseat) ? 'Your turn' : view.turnName + '’s turn')
-        : 'Round over';
+        ? ((view.myTurn && !view.hotseat) ? tr('Your turn') : tr('{name}’s turn', { name: pn(view.turnName) }))
+        : tr('Round over');
       ti.classList.toggle('your-turn', !!view.myTurn);
 
       // action buttons
@@ -954,7 +998,7 @@
       view.chain.forEach(c => {
         const li = el('li');
         const d = dominoEl(c.a, c.b, { flat: true, static: true, numbers: this.store.settings.showNumbers });
-        d.setAttribute('aria-label', c.a + '|' + c.b + (c.double ? ' double' : '') + ' on the table');
+        d.setAttribute('aria-label', tr(c.double ? '{tile} double on the table' : '{tile} on the table', { tile: c.a + '|' + c.b }));
         li.appendChild(d);
         strip.appendChild(li);
       });
@@ -969,7 +1013,7 @@
         btn.classList.toggle('hidden', !legal);
         if (legal) {
           btn.textContent = val === null ? '●' : String(val);
-          btn.setAttribute('aria-label', 'Play selected tile on ' + end + ' end (' + (val === null ? 'open table' : val) + ')');
+          btn.setAttribute('aria-label', tr(end === 'left' ? 'Play selected tile on left end ({value})' : 'Play selected tile on right end ({value})', { value: val === null ? tr('open table') : val }));
         }
       }
 
@@ -983,7 +1027,7 @@
         const playable = !!view.playableTiles[id];
         const d = dominoEl(a, b, {
           numbers: this.store.settings.showNumbers,
-          extraLabel: playable ? 'playable' : 'not playable now',
+          extraLabel: tr(playable ? 'playable' : 'not playable now'),
         });
         d.classList.toggle('selected', sel === id);
         d.classList.toggle('unplayable', view.myTurn && !playable);
@@ -994,15 +1038,15 @@
         li.appendChild(d);
         hand.appendChild(li);
       });
-      const handOwner = view.hotseat ? view.myName + '’s hand' : 'Your hand';
+      const handOwner = view.hotseat ? tr('{name}’s hand', { name: pn(view.myName) }) : tr('Your hand');
       $('hand-label').textContent = handOwner + ' (' + view.myHand.length + ')';
       $('hand-list').setAttribute('aria-label', handOwner);
       $('hand-tray').setAttribute('aria-label', handOwner);
 
       // tutorial banner
       if (view.tutorial) {
-        $('tutorial-text').textContent = view.tutorial.text;
-        $('tutorial-step-count').textContent = 'Step ' + (view.tutorial.index + 1) + ' of ' + view.tutorial.total;
+        $('tutorial-text').textContent = tr(view.tutorial.text);
+        $('tutorial-step-count').textContent = tr('Step {n} of {total}', { n: view.tutorial.index + 1, total: view.tutorial.total });
         $('tutorial-banner').classList.remove('hidden');
       } else if (this.game && this.game.mode !== 'tutorial') {
         $('tutorial-banner').classList.add('hidden');
@@ -1013,7 +1057,7 @@
       if (name === 'round-end') this._showRoundOverlay(payload);
       else if (name === 'results') this._showResults(payload);
       else if (name === 'invalid') { this._haptic([40, 60, 40]); }
-      else if (name === 'achievement') { this.audio.success(); this._toast('Achievement: ' + payload.name + ' — ' + payload.desc); }
+      else if (name === 'achievement') { this.audio.success(); this._toast(() => tr('Achievement: {name} — {desc}', { name: tr(payload.name), desc: tr(payload.desc) })); }
       else if (name === 'tutorial-complete') this._showTutorialComplete(payload);
       else if (name === 'tutorial') { /* banner handled in view */ }
       else if (name === 'hint') {
@@ -1070,13 +1114,13 @@
       this.game.pause();
       this.audio.gamePause();
       this._openOverlay('overlay-pause');
-      this._announce('Paused.');
+      this._announce(tr('Paused.'));
     }
     resumeGame() {
       this._closeOverlay('overlay-pause');
       this.audio.gameResume();
       if (this.game) this.game.resume();
-      this._announce('Resumed. ' + (this.game && this.game.buildView().myTurn ? 'Your turn.' : ''));
+      this._announce(tr('Resumed.') + (this.game && this.game.buildView().myTurn ? ' ' + tr('Your turn.') : ''));
     }
 
     leaveMatch() {
@@ -1120,7 +1164,7 @@
       this.store.saveNow();
       this.game._emitView(true);
       this.game._maybeRunAI();
-      this._announce('Match restored. ' + (this.game.buildView().myTurn ? 'Your turn.' : this.game.state.players[this.game.state.turn].name + ' to play.'));
+      this._announce(tr('Match restored.') + ' ' + (this.game.buildView().myTurn ? tr('Your turn.') : tr('{name} to play.', { name: pn(this.game.state.players[this.game.state.turn].name) })));
     }
 
     _retry() {
@@ -1146,71 +1190,74 @@
 
     _showRoundOverlay(rr) {
       if (this.game && this.game.mode === 'tutorial') return; // lessons flow on
+      this._roundData = rr;
       const me = this.game ? Math.max(0, this.game._humanIndex()) : 0;
       const box = $('round-breakdown');
       box.innerHTML = '';
       const head = el('div', 'row head');
-      head.appendChild(el('span', '', rr.reason === 'domino' ? 'Domino!' : 'Blocked round'));
-      head.appendChild(el('span', 'pts', 'points'));
+      head.appendChild(el('span', '', tr(rr.reason === 'domino' ? 'Domino!' : 'Blocked round')));
+      head.appendChild(el('span', 'pts', tr('points')));
       box.appendChild(head);
       rr.pipTotals.forEach((pips, p) => {
         const row = el('div', 'row' + (rr.winners.includes(p) ? ' winner' : ''));
-        const name = this.game.state.players[p].name + (p === me ? ' (you)' : '');
-        row.appendChild(el('span', '', name + ' held ' + pips + ' pips'));
+        const name = pn(this.game.state.players[p].name) + (p === me ? ' ' + tr('(you)') : '');
+        row.appendChild(el('span', '', tr('{name} held {n} pips', { name, n: pips })));
         const b = rr.breakdown.find(x => x.player === p);
         row.appendChild(el('span', 'pts', b ? '+' + b.points : '0'));
         box.appendChild(row);
       });
       const scoreRow = el('div', 'row head');
-      scoreRow.appendChild(el('span', '', 'Match score'));
-      scoreRow.appendChild(el('span', '', this.game.state.players.map(pl => pl.name + ' ' + pl.score).join(' · ')));
+      scoreRow.appendChild(el('span', '', tr('Match score')));
+      scoreRow.appendChild(el('span', '', this.game.state.players.map(pl => pn(pl.name) + ' ' + pl.score).join(' · ')));
       box.appendChild(scoreRow);
-      if (this.game.state.phase === 'round-over') this._openOverlay('overlay-round');
+      if (this.game.state.phase === 'round-over' && $('overlay-round').classList.contains('hidden')) this._openOverlay('overlay-round');
     }
 
-    _showResults(res) {
+    _showResults(res, relocalizing) {
+      this._resultsData = res; this._tutorialDone = null;
       const t = res.terminal;
       $('results-heading').textContent = res.won
-        ? (this.game.mode === 'tutorial' ? 'Lesson complete!' : 'You win the table!')
-        : t.tied ? 'Dead even' : res.players[t.winner].name + ' takes the table';
+        ? tr(this.game.mode === 'tutorial' ? 'Lesson complete!' : 'You win the table!')
+        : t.tied ? tr('Dead even') : tr('{name} takes the table', { name: pn(res.players[t.winner].name) });
       this._setResultsArt(res.won ? 'assets/results-win.webp' : 'assets/results-over.webp');
       // stars
       const stars = $('results-stars');
       stars.textContent = res.stars ? '★'.repeat(res.stars) + '☆'.repeat(3 - res.stars) : '';
-      for (let i = 0; i < res.stars; i++) this.audio.star(0.4 + i * 0.35);
+      if (!relocalizing) for (let i = 0; i < res.stars; i++) this.audio.star(0.4 + i * 0.35);
       // breakdown — component scores, not one unexplained total
       const box = $('results-breakdown');
       box.innerHTML = '';
       const head = el('div', 'row head');
-      head.appendChild(el('span', '', 'Final score'));
-      head.appendChild(el('span', 'pts', 'pts'));
+      head.appendChild(el('span', '', tr('Final score')));
+      head.appendChild(el('span', 'pts', tr('pts')));
       box.appendChild(head);
       t.ranking.forEach(rk => {
         const pl = res.players[rk.player];
         const row = el('div', 'row' + (rk.player === t.winner ? ' winner' : ''));
-        row.appendChild(el('span', '', pl.name + (rk.player === res.me ? ' (you)' : '') +
-          ' — ' + pl.plays + ' plays, ' + pl.draws + ' draws, ' + pl.invalidActions + ' invalid'));
+        row.appendChild(el('span', '', pn(pl.name) + (rk.player === res.me ? ' ' + tr('(you)') : '') +
+          ' — ' + tr('{plays} plays, {draws} draws, {invalid} invalid', { plays: pl.plays, draws: pl.draws, invalid: pl.invalidActions })));
         row.appendChild(el('span', 'pts', String(pl.score)));
         box.appendChild(row);
       });
-      const reasonText = {
-        'target-reached': 'Target score reached', 'rounds-exhausted': 'Round limit reached',
-        'move-limit': 'Move limit reached', 'time-expired': 'Time expired',
-      }[t.reason] || t.reason;
-      $('results-meta').textContent = reasonText + ' · ' + t.rounds + ' rounds · ' +
-        fmtTime(res.elapsedMs) + ' · seed ' + this.game._replay.seed;
+      const reasonText = tr({
+        'target-reached': N('Target score reached'), 'rounds-exhausted': N('Round limit reached'),
+        'move-limit': N('Move limit reached'), 'time-expired': N('Time expired'),
+      }[t.reason] || t.reason);
+      $('results-meta').textContent = reasonText + ' · ' + tr('{n} rounds', { n: t.rounds }) + ' · ' +
+        fmtTime(res.elapsedMs) + ' · ' + tr('seed {seed}', { seed: this.game._replay.seed });
       const un = $('results-unlocks');
       un.innerHTML = '';
       res.unlocked.forEach(a => {
-        un.appendChild(el('div', 'unlock-chip', '🏆 ' + a.name + ' — ' + a.desc));
+        un.appendChild(el('div', 'unlock-chip', '🏆 ' + tr(a.name) + ' — ' + tr(a.desc)));
       });
       $('btn-results-next').classList.toggle('hidden',
         !(this.game.mode === 'journey' && res.won && this.game.content && this.game.content.number < 40));
-      $('btn-results-retry').textContent = this.game.mode === 'tutorial' ? 'Next lesson' : 'Play again';
+      $('btn-results-retry').textContent = tr(this.game.mode === 'tutorial' ? 'Next lesson' : 'Play again');
+      if (relocalizing) { this._renderLbLine(); return; }
       this._resultsRetryOverride = null;
       this._postToLeaderboard(res);
       this._openOverlay('overlay-results');
-      if (res.unlocked.length) { this.audio.success(); this._toast('Achievement unlocked: ' + res.unlocked[0].name); }
+      if (res.unlocked.length) { this.audio.success(); this._toast(() => tr('Achievement unlocked: {name}', { name: tr(res.unlocked[0].name) })); }
     }
 
     // Hosted play only: ranked matches (Daily, Challenge, Journey) post the
@@ -1219,14 +1266,21 @@
       const line = $('results-lb');
       const mode = this.game.mode;
       const ranked = mode === 'daily' || mode === 'challenge' || mode === 'journey';
+      this._lb = null;
       if (!P().host.present || !ranked || !res.entry) { line.classList.add('hidden'); return; }
-      const pt = PT();
-      line.textContent = pt.lbPosting;
+      this._lb = { state: 'lbPosting' };
+      this._renderLbLine();
       line.classList.remove('hidden');
       P().host.submitScore(res.entry.score).then((r) => {
-        line.textContent = !r.posted ? pt.lbNotPosted
-          : r.rank ? pt.lbRank.replace('{rank}', r.rank) : pt.lbPosted;
+        this._lb = { state: !r.posted ? 'lbNotPosted' : r.rank ? 'lbRank' : 'lbPosted', rank: r.rank };
+        this._renderLbLine();
       });
+    }
+
+    _renderLbLine() {
+      if (!this._lb) return;
+      const pt = PT();
+      $('results-lb').textContent = this._lb.state === 'lbRank' ? pt.lbRank.replace('{rank}', this._lb.rank) : pt[this._lb.state];
     }
 
     // Results illustration (assets/results-*.webp): decorative; the img's
@@ -1239,20 +1293,22 @@
       if (img.getAttribute('src') !== src) img.setAttribute('src', src);
     }
 
-    _showTutorialComplete(def) {
+    _showTutorialComplete(def, relocalizing) {
       // finish the lesson: results overlay with outro and next lesson link
+      this._tutorialDone = def; this._resultsData = null;
       this._setResultsArt('assets/results-win.webp');
       const idx = C().TUTORIALS.findIndex(t => t.id === def.id);
       const next = C().TUTORIALS[idx + 1];
-      $('results-heading').textContent = def.title + ' — complete';
+      $('results-heading').textContent = tr('{title} — complete', { title: tr(def.title) });
       $('results-stars').textContent = '';
       $('results-breakdown').innerHTML = '';
-      $('results-breakdown').appendChild(el('p', '', def.outro));
+      $('results-breakdown').appendChild(el('p', '', tr(def.outro)));
       $('results-unlocks').innerHTML = '';
       $('results-lb').classList.add('hidden');
-      $('results-meta').textContent = 'Lessons completed: ' + this.store.progress.tutorials.length + '/6';
+      $('results-meta').textContent = tr('Lessons completed: {n}/6', { n: this.store.progress.tutorials.length });
       $('btn-results-next').classList.add('hidden');
-      $('btn-results-retry').textContent = next ? 'Next lesson' : 'Journey';
+      $('btn-results-retry').textContent = tr(next ? 'Next lesson' : 'Journey');
+      if (relocalizing) return;
       this._resultsRetryOverride = () => {
         this._closeOverlay('overlay-results');
         if (next) this._startTutorial(next); else this._nav('journey');
@@ -1260,19 +1316,22 @@
       this._openOverlay('overlay-results');
     }
 
+    /** text may be a function so a visible toast follows a language change. */
     _toast(text) {
       const t = $('overlay-achievement');
-      t.textContent = text;
+      this._toastText = text;
+      const str = typeof text === 'function' ? text() : text;
+      t.textContent = str;
       t.classList.remove('hidden');
       this.audio.toast();
       clearTimeout(this._toastTimer);
       this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
-      this._announce(text);
+      this._announce(str);
     }
 
     _showCaption(text) {
       const c = $('overlay-captions');
-      c.textContent = '♪ ' + text;
+      c.textContent = '♪ ' + tr(text);
       c.classList.add('show');
       clearTimeout(this._captionTimer);
       this._captionTimer = setTimeout(() => c.classList.remove('show'), 1200);
@@ -1287,27 +1346,27 @@
       const hostedProfile = P().host.profile && !P().host.profile.guest ? P().host.profile : null;
       $('input-name').value = hostedProfile ? hostedProfile.name : this.store.profile.name;
       $('input-name').disabled = !!hostedProfile;
-      const syncTxt = P().host.sync === 'synced' ? 'cloud save synced'
-        : P().host.sync === 'saving' ? 'saving…'
-        : 'cloud sync unavailable';
+      const syncTxt = P().host.sync === 'synced' ? tr('cloud save synced')
+        : P().host.sync === 'saving' ? tr('saving…')
+        : tr('cloud sync unavailable');
       $('profile-kind').textContent = hostedProfile
-        ? 'Signed in as ' + hostedProfile.name + ' — ' + syncTxt + '. The name comes from your platform profile.'
-        : 'Guest profile — progress is stored on this device. Launch from the platform for cloud saves.';
+        ? tr('Signed in as {name} — {sync}. The name comes from your platform profile.', { name: hostedProfile.name, sync: syncTxt })
+        : tr('Guest profile — progress is stored on this device. Launch from the platform for cloud saves.');
       const st = this.store.progress.stats;
       const dl = $('stats-list');
       dl.innerHTML = '';
-      [['Matches', st.matches], ['Wins', st.wins], ['Win rate', st.matches ? Math.round(100 * st.wins / st.matches) + '%' : '—'],
-       ['Current streak', st.streak], ['Best streak', st.bestStreak], ['Rounds played', st.rounds],
-       ['Dominos', st.dominos], ['Daily tables', Object.keys(this.store.progress.daily).length],
-       ['Mastery stars', Object.values(this.store.progress.journey).reduce((s, v) => s + v.stars, 0)],
-      ].forEach(([k, v]) => { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', '', String(v))); });
+      [[N('Matches'), st.matches], [N('Wins'), st.wins], [N('Win rate'), st.matches ? Math.round(100 * st.wins / st.matches) + '%' : '—'],
+       [N('Current streak'), st.streak], [N('Best streak'), st.bestStreak], [N('Rounds played'), st.rounds],
+       [N('Dominos'), st.dominos], [N('Daily tables'), Object.keys(this.store.progress.daily).length],
+       [N('Mastery stars'), Object.values(this.store.progress.journey).reduce((s, v) => s + v.stars, 0)],
+      ].forEach(([k, v]) => { dl.appendChild(el('dt', '', tr(k))); dl.appendChild(el('dd', '', String(v))); });
       const al = $('achievements-list');
       al.innerHTML = '';
       P().ACHIEVEMENTS.forEach(a => {
         const got = !!this.store.progress.achievements[a.key];
         const li = el('li', got ? 'unlocked' : '');
         li.appendChild(el('span', 'ach-icon', got ? '🏆' : '○'));
-        li.appendChild(el('span', '', a.name + ' — ' + a.desc));
+        li.appendChild(el('span', '', tr(a.name) + ' — ' + tr(a.desc)));
         al.appendChild(li);
       });
       $('panel-conflict').classList.toggle('hidden', !this.store.conflict);
@@ -1320,19 +1379,19 @@
       $('lb-note').textContent = '';
       if (kind === 'local') {
         const board = P().localBoard().slice(0, 20);
-        if (!board.length) list.appendChild(el('li', 'muted', 'No scores yet — play a ranked table.'));
-        board.forEach(e => list.appendChild(el('li', '', e.name + ' — ' + e.score + ' pts (' + e.mode + ', ' + fmtTime(e.durationMs || 0) + ')')));
-        $('lb-note').textContent = 'Stored on this device only.';
+        if (!board.length) list.appendChild(el('li', 'muted', tr('No scores yet — play a ranked table.')));
+        board.forEach(e => list.appendChild(el('li', '', pn(e.name) + ' — ' + tr('{n} pts', { n: e.score }) + ' (' + tr(e.mode) + ', ' + fmtTime(e.durationMs || 0) + ')')));
+        $('lb-note').textContent = tr('Stored on this device only.');
       } else {
         // Platform leaderboard (read-only): no leaderboardId -> local records.
         const res = await P().host.fetchLeaderboard();
         (res.entries || []).slice(0, 20).forEach(e =>
-          list.appendChild(el('li', '', e.name + ' — ' + e.score + ' pts')));
-        if (!res.entries || !res.entries.length) list.appendChild(el('li', 'muted', 'No entries yet.'));
+          list.appendChild(el('li', '', pn(e.name) + ' — ' + tr('{n} pts', { n: e.score }))));
+        if (!res.entries || !res.entries.length) list.appendChild(el('li', 'muted', tr('No entries yet.')));
         $('lb-note').textContent = res.local
           ? (res.reason === 'no-leaderboard'
-            ? 'This game has no platform leaderboard — personal bests live on this device and in your cloud save.'
-            : 'Platform board unavailable — showing nothing yet.')
+            ? tr('This game has no platform leaderboard — personal bests live on this device and in your cloud save.')
+            : tr('Platform board unavailable — showing nothing yet.'))
           : '';
       }
     }
@@ -1342,8 +1401,8 @@
       if (!v) return;
       this.store.doc.profile.name = v;
       this.store.saveNow();
-      this._announce('Name saved.');
-      this._toast('Name saved: ' + v);
+      this._announce(tr('Name saved.'));
+      this._toast(() => tr('Name saved: {name}', { name: v }));
     }
 
     /* -------------------------------------------------------------- help */
@@ -1351,16 +1410,16 @@
       const b = $('help-body');
       b.innerHTML = '';
       const cards = [
-        ['The chain', 'Tiles connect when touching ends show the same number. Each turn, play one tile on either open end. The open values are shown as large numbers beside the chain.'],
-        ['Your hand', 'Tap a tile to select it, then tap an end marker to place it. Tiles you can legally play stay bright; others dim. Double-tap a tile with only one legal end to play it instantly.'],
-        ['Doubles', 'Doubles sit crosswise on the chain. The open value stays the same on that side.'],
-        ['Drawing & passing', 'No playable tile? Draw from the boneyard. If the boneyard is empty (or the table forbids drawing), pass. When every player passes in a row, the round is blocked.'],
-        ['Scoring', 'Empty your hand to go "domino" and score every pip left in other hands. In a blocked round, the lowest remaining pip total wins the margin. First to the target score takes the match.'],
+        [N('The chain'), N('Tiles connect when touching ends show the same number. Each turn, play one tile on either open end. The open values are shown as large numbers beside the chain.')],
+        [N('Your hand'), N('Tap a tile to select it, then tap an end marker to place it. Tiles you can legally play stay bright; others dim. Double-tap a tile with only one legal end to play it instantly.')],
+        [N('Doubles'), N('Doubles sit crosswise on the chain. The open value stays the same on that side.')],
+        [N('Drawing & passing'), N('No playable tile? Draw from the boneyard. If the boneyard is empty (or the table forbids drawing), pass. When every player passes in a row, the round is blocked.')],
+        [N('Scoring'), N('Empty your hand to go "domino" and score every pip left in other hands. In a blocked round, the lowest remaining pip total wins the margin. First to the target score takes the match.')],
       ];
       cards.forEach(([h, t]) => {
         const c = el('section', 'rule-card');
-        c.appendChild(el('h3', '', h));
-        c.appendChild(el('p', '', t));
+        c.appendChild(el('h3', '', tr(h)));
+        c.appendChild(el('p', '', tr(t)));
         b.appendChild(c);
       });
       // controls card generated from current bindings
@@ -1368,18 +1427,19 @@
       const s = { confirm: k('confirm'), cancel: k('cancel'), pause: k('pause'), endLeft: k('endLeft'), endRight: k('endRight'),
         draw: k('draw'), pass: k('pass'), undo: k('undo'), hint: k('hint'), cameraReset: k('cameraReset') };
       const c = el('section', 'rule-card');
-      c.appendChild(el('h3', '', 'Controls'));
+      c.appendChild(el('h3', '', tr('Controls')));
       const demo = el('div', 'rule-demo');
-      [['Select / confirm', s.confirm], ['Cancel / pause', s.cancel + ' / ' + s.pause],
-       ['Left end / right end', s.endLeft + ' / ' + s.endRight], ['Draw / pass', s.draw + ' / ' + s.pass],
-       ['Undo / hint', s.undo + ' / ' + s.hint], ['Reset camera', s.cameraReset],
+      [[N('Select / confirm'), s.confirm], [N('Cancel / pause'), s.cancel + ' / ' + s.pause],
+       [N('Left end / right end'), s.endLeft + ' / ' + s.endRight], [N('Draw / pass'), s.draw + ' / ' + s.pass],
+       [N('Undo / hint'), s.undo + ' / ' + s.hint], [N('Reset camera'), s.cameraReset],
       ].forEach(([k, v]) => {
         const d = el('div', '', '');
-        d.innerHTML = '<kbd>' + v + '</kbd> ' + k;
+        d.appendChild(el('kbd', '', v));
+        d.appendChild(document.createTextNode(' ' + tr(k)));
         demo.appendChild(d);
       });
       c.appendChild(demo);
-      c.appendChild(el('p', 'muted', 'Gamepad: D-pad or left stick moves focus, A confirms, B cancels, Start pauses, X draws, Y hints.'));
+      c.appendChild(el('p', 'muted', tr('Gamepad: D-pad or left stick moves focus, A confirms, B cancels, Start pauses, X draws, Y hints.')));
       b.appendChild(c);
     }
 

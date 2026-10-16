@@ -46,6 +46,11 @@
     });
     root.__CD_UI = ui;
     ui.init();
+    // Language change: re-render every code-built string (static markup is
+    // re-applied by js/i18n.js).
+    document.addEventListener('cdm-language', () => ui.relocalize());
+    // Another device saved first: the store merged both sides and saved again.
+    P.host.onConflict(() => { if (root.__CD_UI) { root.__CD_UI.refreshTitle(); if (ui.screen === 'profile') ui._buildProfile(); } });
 
     // First-run: default telemetry consent stays off until the player opts in.
   }

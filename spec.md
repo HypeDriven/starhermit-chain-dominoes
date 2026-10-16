@@ -34,13 +34,15 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | `js/ui.js` | `UI`: screens, setup flows, HUD, DOM mirror, keyboard/gamepad, overlays, settings, profile, help, captions |
 | `js/audio.js` | `AudioEngine`: 4 buses, 39 sampled one-shots with synth fallbacks, seeded variants, café ambience, generative pad |
 | `js/platform.js` | `Store` (checksummed local save), achievements, telemetry (consent-gated), local leaderboard, StarHermit host adapter |
-| `js/main.js` | Boot: store, host handshake, cloud-conflict check, `window.__CD_UI` |
+| `js/main.js` | Boot: store, host handshake, cloud-conflict check, `window.__CD_UI`, language-change and save-conflict listeners |
+| `sh-language.js` | Shared StarHermit language preference (`window.StarHermitLanguage`), verbatim copy of the canonical `tools/sh-language.js` |
+| `js/strings.js`, `js/i18n.js` | Translation tables (`window.CDM_STRINGS`) and the localizer (`window.CDMI18N`): static markup in place, `tr()` for code, Language setting |
 | `score-script.js` | StarHermit platform script (`server=score-script.js` in `starhermit.txt`): range-checks a finished match score sent through `StarHermit.submitScores` and posts it to the `high-score` leaderboard (canonical copy in the games repo's `tools/score-script.js`) |
 | `server.js` | Authoritative hosted-play Game Script (not the deployed platform script) (`createSession` / `submitCommand` / `getSnapshot` / `tick` / `endSession` / `getReplay`) |
 | `sfx/` | 39 Opus clips; `manifest.txt` (canonical binding), `manifest.json` (generator input), `manifest.md` (generated) |
 | `assets/` | `key-art.webp` (title backdrop), `results-win.webp`, `results-over.webp` |
 | `coverart.png`, `icon.png`, `favicon.svg` | Store cover (1200x675), touch icon, tab icon |
-| `tests/` | `gfx.test.js`, `platform.test.mjs`, `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright); `browser.test.js` (raw CDP, legacy); probes |
+| `tests/` | `gfx.test.js`, `platform.test.mjs`, `i18n.test.mjs` (+ `i18n-common.mjs`), `rules.test.js`, `content.test.js`, `server.test.js` (`npm test`); `e2e.mjs` (Playwright) with `starhermit-e2e.mjs` (stubbed StarHermit API); `browser.test.js` (raw CDP, legacy); probes |
 | `knownissues.md` | QA history: confirmed defects and their fixes |
 
 ## 2. Vision and design pillars
@@ -302,14 +304,39 @@ The table below is the source of `sfx/manifest.txt`. Event ids are `AudioEngine`
 
 ## 10. Localization
 
-The shipped build is **English only** (`<html lang="en">`); there is no string table. UI copy lives inline in
-`index.html`, in `js/ui.js` (setup facts, results headings, help cards, toasts), in `js/session.js` (rejection
-reasons `_reasonText`, live-region announcements, hint text) and in `js/content.js` (stage, challenge and lesson
-names and step text). Language is therefore not selectable. The target locale set for the product — en-US, en-GB,
-es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR, it-IT — is recorded under "Design intent not yet implemented". Layout
-already tolerates ~30 % longer strings: buttons are flex with wrapping labels, the objective ellipsises, rails
-scroll, and overlay cards scroll internally.
+Nine locales ship: **en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR, it-IT**.
 
+- **Strings.** Markup, code and content are authored in English and the English text is the lookup key.
+  `js/strings.js` holds one row per key with es-419, de-DE, fr-FR, pt-BR and it-IT; en-GB, es-ES and fr-CA list
+  only their differences (colour, mando/has…, pointage). `tr()` (`js/i18n.js`) falls back regional → parent →
+  English and fills `{name}` placeholders. Static markup in `index.html` (screens, overlays, settings labels,
+  aria-labels) is translated in place; the logo heading (`data-i18n-skip`) and key caps stay. Code-built text goes
+  through `tr()`: setup facts and forms, lesson and journey lists, challenges, the HUD (objective, rails, scores,
+  turn, hand, end caps, tile aria-labels), lesson banner, round and results overlays, profile, leaderboards, help,
+  key-binding names, toasts, captions, and every `Session` announcement (rejection reasons, turn prompts, hints).
+  Content names, goals, lesson steps and outros are translated at display time; daily names and goals are built per
+  locale (`C.dailyNameText` / `C.dailyGoalText`). Seat names ("You", "Guide", "Player 1/2") translate; opponents'
+  names (Marta, Theo, …), "Chain Dominoes" and "StarHermit" do not. Graphics strings (`js/gfx.js`) and platform
+  strings (`js/platform-strings.js`) use the same locale.
+- **Language setting.** Settings → Graphics → **Language → Game language** (rendered by `game-options.js` in the
+  Graphics section; Settings opens from the title and the pause overlay) offers **Automatic — <resolved language>**
+  plus the nine locales by native name, with a status line (Saved to account / Saved on this device / Account sync
+  unavailable). It is the only selector.
+- **Resolution** (`sh-language.js`): explicit game choice → for Automatic, the StarHermit account's
+  `preferredLanguage` (`GET /api/v1/me/language`, signed in only) → `navigator.languages` → en-US, each mapped to
+  the nearest shipped locale (`es-MX → es-419`, `en-AU → en-GB`, `fr → fr-FR`, `pt-PT → pt-BR`). The choice (`auto`
+  or a locale) is stored per player in `localStorage['chain-dominoes.language.<user|guest>']` and, when signed in,
+  in the per-player settings key `ui.language` as `{ choice }`; a failed settings read never overwrites it and the
+  game never writes the platform preference. `?lang=<tag>` forces a locale for the page load (QA links) and hides
+  the selector.
+- **Live switching.** A change sets `document.documentElement.lang`, re-applies the static markup and fires
+  `cdm-language`; `UI.relocalize()` rebuilds the title state, theme options, Graphics panel, settings and binding
+  names, help, the open journey/lesson/profile/setup screen, the game chrome and table view, an open round or
+  results overlay and a visible toast. The match in play, its clock and the 3D table are untouched.
+- `tests/i18n.test.mjs` collects every key from the markup, the code (`tr()`, and `N()` for keys translated later),
+  audio captions and content, and fails when a locale lacks one or a translation drops a placeholder or markup tag.
+  Layout tolerates ~30 % longer strings: buttons are flex with wrapping labels, the objective ellipsises, rails
+  scroll, and overlay cards scroll internally.
 ## 11. Accessibility
 
 - **Keyboard-only path.** Title → any screen via Tab/Enter; in play, arrows select tiles, `A`/`D`/`Enter` place,
@@ -342,7 +369,9 @@ requests at all.
 |---|---|---|
 | Sign in | Yes | On `*.starhermit.com` without a token the title shows **Sign in with StarHermit** (`StarHermit.signIn()`); hidden when signed in and when running locally. If renewal is refused a toast says the player was signed out, the button returns and play continues locally |
 | Identity / profile | Yes | Guest profile by default. Signed in: the display name is the profile nickname (`StarHermit.profile()`, `Player <id>` fallback, never `/api/v1/me`), shown read-only on the Profile screen with cloud-sync status |
-| Cloud save | Yes | The checksummed save doc mirrors to the slot `/api/v1/me/cloud-saves/game:<slug>` (`loadSave` / `saveJSON` / `flushSave(true)` on `pagehide`/hidden, 2 s debounce); a remote document strictly newer than the local copy at launch opens the Profile "Save conflict" panel where the player keeps one (boot writes such as the account nickname never count as newer, and no push happens until the load is compared or while a conflict is open). localStorage stays the offline cache |
+| Cloud save | Yes | The checksummed save doc mirrors to the slot `/api/v1/me/cloud-saves/game:<slug>` (`loadSave` / `saveJSON` / `flushSave(true)` on `pagehide`/hidden, 2 s debounce); a remote document strictly newer than the local copy at launch opens the Profile "Save conflict" panel where the player keeps one (boot writes such as the account nickname never count as newer, and no push happens until the load is compared or while a conflict is open). localStorage stays the offline cache. Later writes are conditional: when another device saved first the SDK refuses the write (`saveconflict`), the adapter reloads the cloud copy and `Store.mergeRemote` keeps the better of both sides — the most stars and higher best score per journey stage, every finished lesson, the earliest unlock of each achievement, the larger of each stat and mastery XP, the better daily result — while this device keeps its settings, profile and resumable match; the merge is saved again |
+| Language | Yes | Automatic follows `GET /api/v1/me/language`; the explicit choice syncs to the settings key `ui.language` (§10) |
+| Reports | Yes | Settings → **Report a problem** (signed in only, from `game-options.js`) files a bug report through `StarHermit.reportBug` with a small non-personal `context.json`; uncaught errors are filed as crash reports through `StarHermit.captureCrashes` (at most one per message and three per page load) |
 | Settings KV | Yes | Theme, graphics, volumes, mute and every accessibility/assist preference are patched to the game's settings KV on change (debounced, only after the KV was read) and applied at boot, where the platform value wins |
 | Controls | Yes | All 14 keyboard actions are declared as `control.*` in `starhermit.txt`; at boot `loadBindings()` resolves the player's platform bindings over the defaults, keydown routes by `event.code` through them, and Settings and How to Play list the effective keys |
 | Invite link | Yes | Signed in, the title shows **Invite a friend** and Hosted Play offers the same button; both copy `StarHermit.inviteLink()` with a confirmation toast |
@@ -353,7 +382,7 @@ requests at all.
 | Sessions / Game Script | Script only | `server.js` is an authoritative session script in a "Games API style" contract (`createSession` / `submitCommand` / `getSnapshot` / `tick` / `endSession`) tested in Node. It is not the platform host's `game.createSession(ctx)` / `onPlayerMessage(ctx)` contract and the client has no remote-table renderer, so the deployed platform script is `score-script.js`; apart from the short practice session `submitScores` opens to post a score, `StarHermit.connect`, session resume, session chat, session invites and replays are not used |
 | Presence, telemetry, chat, voice, realtime rooms | No | Not reachable by launch tokens or not used; consent-gated funnel events stay in memory |
 
-New platform UI strings ship in all nine locales (`js/platform-strings.js`, picked from `navigator.language`).
+New platform UI strings ship in all nine locales (`js/platform-strings.js`, following the game language).
 
 ## 13. Technical architecture
 
@@ -388,13 +417,19 @@ rules, blocked/domino scoring, match end reasons, ranking, serialization, hash s
 information, membership, duplicate ids, payload cap, turn order, deadlines, replay export), after `tests/gfx.test.js`
 and `tests/platform.test.mjs` (the host adapter over the SDK with a stubbed fetch and launch fragment: token claims,
 nickname, cloud save round-trip on `game:<slug>`, settings patch, bindings, queue join/poll, invite link; standalone
-makes zero fetches).
+makes zero fetches; the save-conflict merge keeps the better of both devices and this device's settings) and
+`tests/i18n.test.mjs` (every key translated in every locale with its placeholders; the locale follows
+`sh-language.js` and switches live).
 
 `npm run test:e2e` runs 12 steps at 1280x800 and again at 390x844 with touch: title visible; Lesson 1 completes and
 chains into Lesson 2; practice setup starts a 3-seat table; pass-and-play hands the seat between two humans; journey
 list has 40 stages with stage 1 unlocked; a full journey match is played to the results overlay through on-screen
-controls; breakdown rows exist; retry restarts; pause/resume; leave; settings toggles apply. Any console error or page
-error fails the run. `npm run test:browser` is the older CDP driver (hard-coded ports 8571/9223, 38 checks).
+controls; breakdown rows exist; retry restarts; pause/resume; leave; settings toggles apply; Graphics presets and overrides; then, signed in through a launch token against a
+stubbed StarHermit API whose account prefers fr-CA: the title reads "Jouer", practice setup "Prendre place", a
+match starts and is paused, Settings shows "Automatique — Français (Canada)", choosing Italiano re-renders
+Settings, the hand and action rail and the pause overlay, PUTs `ui.language` and shows "Salvato nell’account",
+Report a problem posts a bug report, no Settings control spills past the viewport, the match state is unchanged,
+and Automatic is restored. Any console error or page error fails the run. `npm run test:browser` is the older CDP driver (hard-coded ports 8571/9223, 38 checks).
 
 QA bar, as checkable statements:
 
@@ -423,7 +458,6 @@ QA bar, as checkable statements:
 
 ## 16. Known limitations
 
-- No text localization layer; English only (§10).
 - Hosted play has no client transport: "Create private invitation" and "Find public match" only post to the host API;
   two browsers cannot yet drive one `server.js` session from this repo. Pass-and-play is the offline substitute.
 - `server.js` keeps sessions in an unbounded `Map`; eviction is left to the host (`knownissues.md`).
@@ -439,8 +473,6 @@ QA bar, as checkable statements:
 
 ## Design intent not yet implemented
 
-- Localization into en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR, it-IT with a string table, language
-  chosen from the host profile or `navigator.language`, and per-locale lesson/stage copy.
 - A real hosted lobby: invitation inbox, readiness, reconnect snapshot from `getSnapshot`, and gameplay WebSocket
   events feeding `Session` as the second seat.
 - Server-side achievement unlocks and rating changes.

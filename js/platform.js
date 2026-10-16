@@ -71,6 +71,9 @@
       this.doc = defaultDoc();
       this._loadLocal();
       this._conflict = null; // {local, remote} preserved for player choice
+      // A write that lost to another device (SDK 'saveconflict'): merge the
+      // reloaded cloud copy into this one and save the merge.
+      host._conflictListeners.unshift((raw) => this.mergeRemote(raw));
       this._cloudBusy = false; // cloud compare in flight: pushes are deferred
       this._pushDeferred = false;
     }
@@ -145,6 +148,22 @@
         this._cloudPush(); // keep local: it replaces the cloud doc now
       }
     }
+    /**
+     * Merge the other device's save (wrapped string) into this one, keeping
+     * the better of each record — journey stars and best scores, every
+     * finished lesson, the earliest unlock of each achievement, the larger
+     * stats and mastery XP, the better daily result — while this device keeps
+     * its settings, profile and resumable match. Saves the merge.
+     */
+    mergeRemote(raw) {
+      let remote = null;
+      try {
+        const env = raw ? JSON.parse(raw) : null;
+        if (env && env.checksum === checksum(env.payload)) remote = JSON.parse(env.payload);
+      } catch (e) { remote = null; }
+      if (remote && remote.progress) mergeProgress(this.doc.progress, remote.progress);
+      this.saveNow();
+    }
     _cloudPush() {
       if (!host.present) return;
       if (this._cloudBusy || this._conflict) { this._pushDeferred = true; return; }
@@ -154,6 +173,29 @@
         host.cloudPush(JSON.stringify({ checksum: checksum(payload), payload }));
       } catch (e) { /* retry on next save */ }
     }
+  }
+
+  /** Mutates and returns `a` with the better of each record from `b`. */
+  function mergeProgress(a, b) {
+    Object.keys(b.journey || {}).forEach((id) => {
+      const l = a.journey[id] || {}, r = b.journey[id] || {};
+      a.journey[id] = Object.assign({}, l, r, {
+        stars: Math.max(l.stars || 0, r.stars || 0),
+        bestScore: Math.max(l.bestScore || 0, r.bestScore || 0),
+      });
+    });
+    a.tutorials = Array.from(new Set([...(a.tutorials || []), ...(b.tutorials || [])]));
+    Object.keys(b.achievements || {}).forEach((k) => {
+      a.achievements[k] = a.achievements[k] ? Math.min(a.achievements[k], b.achievements[k]) : b.achievements[k];
+    });
+    a.stats = a.stats || {};
+    Object.keys(b.stats || {}).forEach((k) => { a.stats[k] = Math.max(Number(a.stats[k]) || 0, Number(b.stats[k]) || 0); });
+    Object.keys(b.daily || {}).forEach((key) => {
+      const l = a.daily[key], r = b.daily[key];
+      a.daily[key] = !l ? r : Object.assign({}, l, { score: Math.max(l.score || 0, r.score || 0), won: !!(l.won || r.won) });
+    });
+    a.masteryXP = Math.max(a.masteryXP || 0, b.masteryXP || 0);
+    return a;
   }
 
   /* -------------------------------------------------------- achievements */
@@ -220,6 +262,7 @@
     _timeOffset: 0,
     _syncListeners: [],
     _authListeners: [],
+    _conflictListeners: [],
     _hooked: false,
     _settingsTimer: null,
     _settingsLoaded: false,
@@ -233,7 +276,14 @@
       const s = sdk();
       if (s && !this._hooked) {
         this._hooked = true;
-        s.on('saved', (ok) => this._setSync(ok ? 'synced' : 'offline'));
+        s.on('saved', (ok) => { if (!s.saveConflicted()) this._setSync(ok ? 'synced' : 'offline'); });
+        s.on('saveconflict', () => {
+          this._setSync('saving');
+          s.loadSave().then((raw) => {
+            if (s.saveConflicted()) { this._setSync('offline'); return; }
+            this._conflictListeners.forEach((fn) => { try { fn(raw); } catch (e) { /* ok */ } });
+          });
+        });
         s.on('auth', (a) => {
           if (!a.signedIn) { this.profile = { name: 'Guest', guest: true }; this._setSync('offline'); }
           this._authListeners.forEach((fn) => { try { fn(a); } catch (e) { /* ok */ } });
@@ -249,6 +299,8 @@
       return this.present;
     },
     onAuth(fn) { if (typeof fn === 'function') this._authListeners.push(fn); },
+    /** fn(rawRemote) after a save conflict, once the store has merged and re-saved. */
+    onConflict(fn) { if (typeof fn === 'function') this._conflictListeners.push(fn); },
     canSignIn() { const s = sdk(); return !!(s && s.canSignIn()); },
     signIn() { const s = sdk(); return !!(s && s.signIn()); },
     inviteLink() { const s = sdk(); return s && s.signedIn ? s.inviteLink() : null; },
@@ -275,11 +327,13 @@
 
     /* Identity: the profile nickname (never /api/v1/me, never usernames). */
     profileFor(userId) {
-      if (!userId || typeof userId !== 'string') return Promise.resolve('player');
+      const tr = (k, v) => (root.CDMI18N ? root.CDMI18N.T(k, v) : k.replace('{id}', v ? v.id : ''));
+      if (!userId || typeof userId !== 'string') return Promise.resolve(tr('player'));
       const s = sdk();
-      if (!s || !s.signedIn) return Promise.resolve('Player ' + userId.slice(0, 6));
-      return s.profile(userId).then((p) => (p && p.displayName) || 'Player ' + userId.slice(0, 6))
-        .catch(() => 'Player ' + userId.slice(0, 6));
+      const fallback = tr('Player {id}', { id: userId.slice(0, 6) });
+      if (!s || !s.signedIn) return Promise.resolve(fallback);
+      return s.profile(userId).then((p) => (p && p.displayName) || fallback)
+        .catch(() => fallback);
     },
     async fetchProfile() {
       if (!this.userId) return null;
@@ -430,5 +484,5 @@
     return board;
   }
 
-  return { Store, ACHIEVEMENTS, unlock, telemetry, host, localBoard, localSubmit, checksum };
+  return { Store, ACHIEVEMENTS, unlock, telemetry, host, localBoard, localSubmit, checksum, mergeProgress };
 });

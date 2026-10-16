@@ -367,9 +367,20 @@
     return problems;
   }
 
+  // Localized daily name/goal (the English fields above stay the content of record).
+  function dailyNameText(daily, tr) { return tr('Daily Table — {date}', { date: daily.dateKey }); }
+  function dailyGoalText(daily, tr) {
+    const r = daily.ruleset || {};
+    const key = r.drawRule === 'none' ? 'Today\'s shared table: first to {n}, boneyard closed.'
+      : r.drawRule === 'one' ? 'Today\'s shared table: first to {n}, one draw per turn.'
+      : 'Today\'s shared table: first to {n}.';
+    return tr(key, { n: r.targetScore });
+  }
+
   return {
     CONTENT_VERSION, THEMES, CVD_PALETTES, TUTORIALS, JOURNEY, CHALLENGES,
     stageToConfig, challengeToConfig, dailyForDate, dailyToConfig, practiceConfig, validateContent,
+    dailyNameText, dailyGoalText,
     themeById(id) { return THEMES.find(t => t.id === id) || THEMES[0]; },
   };
 });

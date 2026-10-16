@@ -15,6 +15,14 @@
   'use strict';
 
   const BUILD_VERSION = '1.0.0';
+  /** Localized text (js/i18n.js; identity in node tests). English source strings are the keys. */
+  const tr = (key, vars) => {
+    if (globalThis.CDMI18N) return globalThis.CDMI18N.T(key, vars);
+    return vars ? String(key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)) : key;
+  };
+  const N = (s) => s;
+  /** Player names: built-in seats ("You", "Guide", "Player 1") are translated; real names are not. */
+  const pn = (name) => tr(name);
 
   class Session {
     constructor(opts) {
@@ -89,9 +97,10 @@
     _introText() {
       const t = this.state.ruleset.targetScore;
       const names = this.state.players.map(p => p.name).join(', ');
-      if (this.mode === 'tutorial') return this._tutorial.def.intro;
-      return (this.content && (this.content.goal || this.content.blurb)) ||
-        ('First to ' + (t > 0 ? t : 'the highest score') + '. Players: ' + names + '.');
+      if (this.mode === 'tutorial') return tr(this._tutorial.def.intro);
+      if (this.content && this.content.kind === 'daily') return C.dailyGoalText ? C.dailyGoalText(this.content, tr) : tr(this.content.goal);
+      return (this.content && (this.content.goal || this.content.blurb) && tr(this.content.goal || this.content.blurb)) ||
+        (t > 0 ? tr('First to {n}. Players: {names}.', { n: t, names }) : tr('First to the highest score. Players: {names}.', { names }));
     }
 
     /* ------------------------------------------------------------- clock */
@@ -162,21 +171,21 @@
 
     _reasonText(reason) {
       const map = {
-        'not-your-turn': 'It is not your turn.',
-        'tile-not-in-hand': 'That tile is not in your hand.',
-        'no-matching-end': 'That tile does not match that end.',
-        'must-play-if-able': 'You have a playable tile — you must play it.',
-        'boneyard-empty': 'The boneyard is empty. You must pass.',
-        'must-draw-first': 'Draw from the boneyard first.',
-        'draw-disabled': 'Drawing is disabled at this table.',
-        'draw-limit-one': 'Only one draw per turn at this table.',
-        'move-limit-reached': 'You have reached the move limit.',
-        'game-over': 'The match is over.',
-        'round-over': 'The round is over.',
-        'follow-the-lesson': 'Follow the highlighted lesson step.',
-        'malformed-command': 'That action is not recognized.',
+        'not-your-turn': N('It is not your turn.'),
+        'tile-not-in-hand': N('That tile is not in your hand.'),
+        'no-matching-end': N('That tile does not match that end.'),
+        'must-play-if-able': N('You have a playable tile — you must play it.'),
+        'boneyard-empty': N('The boneyard is empty. You must pass.'),
+        'must-draw-first': N('Draw from the boneyard first.'),
+        'draw-disabled': N('Drawing is disabled at this table.'),
+        'draw-limit-one': N('Only one draw per turn at this table.'),
+        'move-limit-reached': N('You have reached the move limit.'),
+        'game-over': N('The match is over.'),
+        'round-over': N('The round is over.'),
+        'follow-the-lesson': N('Follow the highlighted lesson step.'),
+        'malformed-command': N('That action is not recognized.'),
       };
-      return map[reason] || ('Not allowed: ' + reason);
+      return map[reason] ? tr(map[reason]) : tr('Not allowed: {reason}', { reason });
     }
 
     _afterCommand(res, cmd) {
@@ -196,7 +205,7 @@
       else {
         this._emitView();
         // Pass-and-play: the seat changed hands, so say whose device turn it is.
-        if (this.hotseat) this._announce('Pass the device. ' + this.state.players[this.state.turn].name + ' to play.');
+        if (this.hotseat) this._announce(tr('Pass the device. {name} to play.', { name: pn(this.state.players[this.state.turn].name) }));
       }
       this._maybeRunAI();
     }
@@ -266,10 +275,10 @@
       const st = this.state;
       const acts = R.legalActions(st, st.turn);
       const kinds = new Set(acts.map(a => a.type));
-      let msg = 'Your turn. ';
-      if (kinds.has('play')) msg += 'Ends are ' + st.leftEnd + ' and ' + st.rightEnd + '.';
-      else if (kinds.has('draw')) msg += 'No matching tile — draw from the boneyard.';
-      else msg += 'No moves — you must pass.';
+      let msg = tr('Your turn.') + ' ';
+      if (kinds.has('play')) msg += tr('Ends are {left} and {right}.', { left: st.leftEnd, right: st.rightEnd });
+      else if (kinds.has('draw')) msg += tr('No matching tile — draw from the boneyard.');
+      else msg += tr('No moves — you must pass.');
       this._announce(msg);
     }
 
@@ -315,7 +324,7 @@
       // without it the envelope stops replaying at the end of round one.
       this._replay.commands.push({ tick: this.state.tick, player: -1, cmd: { type: 'next-round' } });
       this._emitView(true);
-      this._announce('Round ' + this.state.round + '. ' + this.state.players[this.state.turn].name + ' opens.');
+      this._announce(tr('Round {n}. {name} opens.', { n: this.state.round, name: pn(this.state.players[this.state.turn].name) }));
       this._maybeRunAI();
     }
 
@@ -396,7 +405,7 @@
           elapsedMs: this._elapsedMs,
         });
       }
-      this._announce(won ? 'Match won!' : 'Match over. ' + st.players[st.terminal.winner].name + ' wins.');
+      this._announce(won ? tr('Match won!') : tr('Match over. {name} wins.', { name: pn(st.players[st.terminal.winner].name) }));
     }
 
     _starsFor(st, me) {
@@ -443,7 +452,7 @@
       }
       this.selectedTile = null;
       this._emitView(true);
-      this._announce('Undone. Your turn.');
+      this._announce(tr('Undone. Your turn.'));
       if (this.audio) this.audio.undoMove();
       return { ok: true };
     }
@@ -459,9 +468,10 @@
       let text;
       if (move.type === 'play') {
         const t = R.tileOf(this.state, move.tileId);
-        text = 'Try ' + t.a + '|' + t.b + ' on the ' + (this.state.chain.length ? move.end : 'table') + '.';
-      } else text = move.type === 'draw' ? 'Draw from the boneyard.' : 'Pass.';
-      this._announce('Hint: ' + text);
+        text = !this.state.chain.length ? tr('Try {tile} on the table.', { tile: t.a + '|' + t.b })
+          : tr(move.end === 'left' ? 'Try {tile} on the left end.' : 'Try {tile} on the right end.', { tile: t.a + '|' + t.b });
+      } else text = tr(move.type === 'draw' ? 'Draw from the boneyard.' : 'Pass.');
+      this._announce(tr('Hint: {text}', { text }));
       if (this.onEvent) this.onEvent('hint', move);
       return move;
     }
@@ -522,7 +532,7 @@
           text: step.text, highlight: step.highlight || null, expect: step.expect,
           lessonTitle: this._tutorial.def.title,
         });
-        this._announce('Lesson: ' + step.text);
+        this._announce(tr('Lesson: {text}', { text: tr(step.text) }));
       }
     }
 

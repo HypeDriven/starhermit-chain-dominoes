@@ -33,7 +33,7 @@
         <span class="logo-tile tilted"><i></i><i></i></span>
         <span class="logo-tile"><i></i><i></i></span>
       </div>
-      <h1 id="title-heading">Chain Dominoes</h1>
+      <h1 id="title-heading" data-i18n-skip>Chain Dominoes</h1>
       <p class="tagline">A café-table game of matching ends and light hands.</p>
     </div>
     <nav class="title-menu" aria-label="Main menu">
@@ -130,7 +130,7 @@
     <!-- right rail: contextual actions & status (drawer on small screens) -->
     <aside id="rail-right" class="rail rail-right" aria-label="Actions">
       <h3 class="rail-title">Actions</h3>
-      <button id="btn-draw" class="btn btn-action hidden">Draw <kbd>W</kbd></button>
+      <button id="btn-draw" class="btn btn-action hidden"><span>Draw</span> <kbd>W</kbd></button>
       <button id="btn-pass" class="btn btn-action hidden">Pass <kbd>S</kbd></button>
       <button id="btn-hint" class="btn btn-action">Hint <kbd>H</kbd></button>
       <button id="btn-undo" class="btn btn-action">Undo <kbd>U</kbd></button>
@@ -312,6 +312,9 @@
     import('three/addons/environments/RoomEnvironment.js'),
   ]).then(mods => Object.assign({}, ...mods)).catch(() => null);
 </script>
+<script src="sh-language.js" defer></script>
+<script src="js/strings.js" defer></script>
+<script src="js/i18n.js" defer></script>
 <script src="js/rules.js" defer></script>
 <script src="js/content.js" defer></script>
 <script src="js/ai.js" defer></script>
