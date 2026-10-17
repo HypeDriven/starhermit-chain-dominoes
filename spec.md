@@ -276,10 +276,10 @@ simultaneous sounds (shared `game-options.js`).
 starts a 4-player Practice table and keeps playing legal moves through the hand and end buttons). Measured 2026-10-17
 (AMD Radeon iGPU level 2 GPU time projected to the preset's floor level; RTX 5090 CPU time):
 
-- Desktop 1920×1080: FAIL low (GPU p90 12.48 ms → ≈ 18.89 ms at level 0, CPU 1.00 ms); PASS balanced (18.25 →
-  ≈ 12.06 ms at level 4, CPU 1.80 ms); PASS high (38.32 → ≈ 7.31 ms at level 10, CPU 1.90 ms); PASS ultra (96.20 →
-  ≈ 4.31 ms at level 17, CPU 1.60 ms).
-- Mobile 390×844 @3×: FAIL low (16.82 → ≈ 25.44 ms, CPU 0.70 ms); PASS balanced (15.33 → ≈ 10.13 ms at level 4,
+- Desktop 1920×1080: FAIL low (GPU p90 11.91 ms → ≈ 18.02 ms at level 0, CPU 1.00 ms); PASS balanced (19.48 →
+  ≈ 12.87 ms at level 4, CPU 1.90 ms); PASS high (28.35 → ≈ 5.41 ms at level 10, CPU 1.90 ms); PASS ultra (87.69 →
+  ≈ 3.93 ms at level 17, CPU 2.60 ms).
+- Mobile 390×844 @3×: FAIL low (16.92 → ≈ 25.60 ms, CPU 1.00 ms); PASS balanced (15.54 → ≈ 10.27 ms at level 4,
   CPU 1.30 ms).
 - Low is at the benchmark's floor on this machine: a blank page that only clears a full-window WebGL canvas
   measures 8–11 ms p90 desktop (≈ 12–17 ms at level 0) and 13–15 ms in the mobile profile.

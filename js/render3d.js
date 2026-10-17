@@ -55,6 +55,16 @@
       '}'].join('\n'),
   };
 
+
+  // Run a post pass at a fraction of the frame (per-preset budget). EffectComposer sizes every pass to the
+  // full frame in addPass/setSize, so the pass's own setSize is wrapped to apply the scale.
+  function atScale(pass, k) {
+    if (!(k > 0 && k < 1)) return pass;
+    const setSize = pass.setSize.bind(pass);
+    pass.setSize = (w, h) => setSize(Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k)));
+    return pass;
+  }
+
   function resolveGfx(opts) {
     const G = root.ChainDominoesGfx;
     if (opts.gfx) return opts.gfx;
@@ -1342,7 +1352,7 @@
         if (g.ao !== 'off') {
           // Contact darkening under tiles, cup and rails; scaled to tile size.
           const aoRes = (g.budget && g.budget.aoRes) || 1; // per-preset post resolution
-          const ao = new A.GTAOPass(this.scene, this.camera, Math.round(W * aoRes), Math.round(H * aoRes));
+          const ao = atScale(new A.GTAOPass(this.scene, this.camera, W, H), aoRes);
           ao.output = A.GTAOPass.OUTPUT.Default;
           ao.blendIntensity = 0.75;
           ao.updateGtaoMaterial({ radius: 1.1, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: g.ao === 'high' ? 16 : 8 });
@@ -1352,7 +1362,7 @@
         if (g.bloom === 'on') {
           // High threshold: only the window glow and glowing markers bloom.
           const bloomRes = (g.budget && g.budget.bloomRes) || 1;
-          composer.addPass(new A.UnrealBloomPass(new THREE.Vector2(Math.round(W * bloomRes), Math.round(H * bloomRes)), 0.45, 0.4, BLOOM_THRESHOLD));
+          composer.addPass(atScale(new A.UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.4, BLOOM_THRESHOLD), bloomRes));
         }
         if (g.grade === 'on') composer.addPass(new A.ShaderPass(GradeShader));
         composer.addPass(new A.OutputPass());
