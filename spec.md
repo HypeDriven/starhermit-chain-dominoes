@@ -227,28 +227,62 @@ rows of 30 units advancing 5.2 per row in a serpentine. ACES filmic tone mapping
 1.2), fog from 70 to 160 in the theme fog colour. Post-processing and effects follow the Graphics settings below.
 
 **Graphics.** A warm key light with PCF shadows whose box is fitted to the play area (felt, hand arc, cup, boneyard),
-a hemisphere fill and a café pendant; ACES filmic tone mapping with sRGB output. Tiles are physical ceramic with
+a hemisphere fill and a café pendant; ACES filmic tone mapping with sRGB output. Tiles are ceramic (material class per preset, below) with
 drilled pips, a grooved divider and a brass spinner pin; the felt sits in a leather-bound edge band; the wall has a
 plaster band over a wainscot and a mullioned window; the cup has a crema ring and soft steam that rises, sways and
 fades. Optional effects: image-based lighting from three's `RoomEnvironment` (PMREM, scene intensity 0.3, the felt
 0.08, the fill light steps down to keep exposure), surface detail (clearcoat glaze on tiles and cup, bump-mapped
-felt, wood and recessed pips, 2x face textures), steam density (24 or 120 points), window-light shimmer (a slow
+felt, wood and recessed pips), steam density (per preset, below), window-light shimmer (a slow
 ±3.5 % key-light drift), and a post chain — GTAO contact darkening, UnrealBloom at a scene-linear threshold of 2.2
 that only the boosted legal-end markers and selection ring exceed, a gentle S-curve/saturation grade with vignette,
 then OutputPass and SMAA or FXAA; MSAA uses the canvas or a multisampled half-float target. Steam and shimmer stop
 with reduced motion or `prefers-reduced-motion`. The Settings screen's **Graphics** section offers Quality (Auto,
-chosen from the WebGL unmasked renderer: software renderers get Low, discrete GPUs and Apple M get High, others
-Balanced, touch devices capped at Balanced; Low; Balanced; High; Ultra), a render scale (50–200 % of the preset's),
+chosen from the StarHermit hardware level, below; Low; Balanced; High; Ultra), a render scale (50–200 % of the preset's),
 one select per category — shadows (off/1024/2048/4096), ambient occlusion (off/on/high), bloom, colour grade,
 anti-aliasing (off/FXAA/SMAA/MSAA), reflections, surface detail, steam particles, window light — each defaulting to
 "From preset (…)", adaptive resolution (averages 90 frames; steps down 0.1 to 0.6 above 26 ms, up 0.05 below 14 ms)
-and a frame-rate readout (top-right of the table), plus a summary "GPU · effects · W×H px". Pixel ratio is
-min(devicePixelRatio, preset cap: Low 1, Balanced 1.5, High/Ultra 2) × preset scale (Ultra 1.25) × render scale ×
+and a frame-rate readout (top-right of the table), plus a summary "GPU · Level N · effects · W×H px" ("Level" localized). Pixel ratio is
+min(devicePixelRatio, preset cap: Low 1, Balanced 1.5, High/Ultra 2) × preset scale (Balanced 0.9, Ultra 1.25) × render scale ×
 adaptive scale; Low renders without any post pass. Choosing a preset clears overrides; changes apply live and persist
 in the save document (`settings.quality` = preset, legacy "medium" reads as Balanced; `settings.gfx` = scale, toggles,
 overrides). `body[data-gfx-preset]` exposes the resolved preset. If the addons or post chain fail, the table renders
 without post and the panel says so. The panel's strings are localized (en-US, en-GB, es-419, es-ES, de-DE, fr-FR,
 fr-CA, pt-BR, it-IT) from `navigator.language`.
+
+**Hardware-level detection.** `js/gpu-level.js` (shared StarHermit copy, `window.StarHermitGpu`, loaded before
+`js/gfx.js`) rates the WebGL unmasked renderer on the StarHermit hardware level 0–20 (0 = Galaxy S20 / Intel UHD or
+weaker and every software renderer, 20 = RTX 5090, each level ≈ 1.23×; laptop parts two levels below desktop; phones,
+tablets and ≤ 4 GB machines capped at 9). `gfx.js` maps it with `presetForLevel(level, { low: 0, balanced: 4,
+high: 10, ultra: 17 })`, so Auto picks Ultra on strong GPUs; adaptive resolution still steps down when slow.
+Headless SwiftShader is level 0 → Low.
+
+**Per-preset budgets** (`BUDGETS` / `budgetFor` in `js/gfx.js`; each preset holds 60 FPS on the weakest GPU Auto
+gives it — Low at level 0, Balanced 4, High 10, Ultra 17). Counts are tuned at the floor level and scale up within
+the preset on faster GPUs (`StarHermitGpu.scaleBudget`, ≤ 4×, never below the floor). Changing preset swaps the
+environment materials in place and rebuilds the tiles at their current positions.
+
+| Budget | Low | Balanced | High | Ultra |
+|---|---|---|---|---|
+| Materials (table, felt, band, wall, cup, tiles) | Lambert | Standard | Physical (clearcoat glaze when detailed) | Physical |
+| Tile-face texture | 128×256 | 256×512 | 256×512 | 512×1024 |
+| Tile corner curve / bevel segments | 3 / 1 | 6 / 2 | 8 / 3 | 12 / 4 |
+| Bloom / GTAO resolution | ½ / ½ | ½ / ½ | ½ / ½ | full / full |
+| Steam points (Particles tier caps: low 24) | 16 | 24 | 120 | 200 |
+
+Phones and tablets pace Auto FPS at half the display refresh rate ("Auto (half refresh rate)") and start at 16
+simultaneous sounds (shared `game-options.js`).
+
+**Benchmark** (`node tools/gfx-bench.mjs chain-dominoes`; hook `tests/gfx-bench.mjs` picks the preset in Settings,
+starts a 4-player Practice table and keeps playing legal moves through the hand and end buttons). Measured 2026-10-17
+(AMD Radeon iGPU level 2 GPU time projected to the preset's floor level; RTX 5090 CPU time):
+
+- Desktop 1920×1080: FAIL low (GPU p90 12.48 ms → ≈ 18.89 ms at level 0, CPU 1.00 ms); PASS balanced (18.25 →
+  ≈ 12.06 ms at level 4, CPU 1.80 ms); PASS high (38.32 → ≈ 7.31 ms at level 10, CPU 1.90 ms); PASS ultra (96.20 →
+  ≈ 4.31 ms at level 17, CPU 1.60 ms).
+- Mobile 390×844 @3×: FAIL low (16.82 → ≈ 25.44 ms, CPU 0.70 ms); PASS balanced (15.33 → ≈ 10.13 ms at level 4,
+  CPU 1.30 ms).
+- Low is at the benchmark's floor on this machine: a blank page that only clears a full-window WebGL canvas
+  measures 8–11 ms p90 desktop (≈ 12–17 ms at level 0) and 13–15 ms in the mobile profile.
 
 **Motion.** Tiles move on a critically damped spring (k = 90); selection lifts 0.9 units and adds a 0.25 emissive
 tint plus a grounded ring; end rings pulse ±8 %; steam drifts on the CPU; the round-end shake is 0.15 units decaying.

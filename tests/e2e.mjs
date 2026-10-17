@@ -308,6 +308,7 @@ async function runPass(label, viewport, hasTouch) {
       await page.selectOption('#set-quality', 'high');
       if ((await gfx()) !== 'high') throw new Error('High preset not applied');
       if (!/2048² shadows/.test(await summary())) throw new Error(`High summary wrong: ${await summary()}`);
+      if (!/ · Level 0 · /.test(await summary())) throw new Error(`summary lacks the hardware level: ${await summary()}`);
       await page.selectOption('#gfx-shadows', 'high');
       if (!/4096² shadows/.test(await summary())) throw new Error('shadow override not applied');
       await page.selectOption('#gfx-bloom', 'off');

@@ -107,10 +107,10 @@
   // One texture per (a,b) face, cached. Ceramic face, grooved divider with a
   // brass spinner pin, drilled pips. Detailed surfaces use a 2x canvas and a
   // matching bump map (pips and groove recessed).
-  function tileFaceTexture(a, b, theme, cache, detailed, bump) {
-    const key = a + '-' + b + '-' + theme.id + (detailed ? '-d' : '') + (bump ? '-bump' : '');
+  function tileFaceTexture(a, b, theme, cache, detailed, bump, size) {
+    const S = size || (detailed ? 256 : 128), k = S / 128; // per-preset texture variant (budget.faceTexture)
+    const key = a + '-' + b + '-' + theme.id + (detailed ? '-d' : '') + (bump ? '-bump' : '') + '-' + S;
     if (cache.has(key)) return cache.get(key);
-    const S = detailed ? 256 : 128, k = S / 128;
     const c = makeCanvas(S, S * 2);
     const ctx = c.getContext('2d');
     if (bump) {
@@ -315,11 +315,11 @@
     return s;
   }
 
-  function makeTileGeometry() {
+  function makeTileGeometry(curve = 6, bevel = 2) { // LOD per preset (budget.tileCurve / tileBevel)
     const THREE = root.THREE;
     const shape = roundedRectShape(TILE.w, TILE.l, 0.32);
     const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: TILE.h, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: 2, curveSegments: 6,
+      depth: TILE.h, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: bevel, curveSegments: curve,
     });
     // ExtrudeGeometry UVs are raw shape coordinates — normalize to [0,1]
     // so the face texture maps cleanly onto the cap.
@@ -509,7 +509,7 @@
 
       // Table
       const woodMap = woodTexture(t);
-      const tableMat = new THREE.MeshStandardMaterial({ map: woodMap, roughness: 0.62, metalness: 0.05 });
+      const tableMat = this._lit({ map: woodMap, roughness: 0.62, metalness: 0.05 });
       tableMat.userData.bump = { map: woodMap, scale: 1.2 };
       const table = new THREE.Mesh(new THREE.BoxGeometry(FRAMING.tableSize, 2.4, FRAMING.tableSize), tableMat);
       table.position.y = -1.2;
@@ -517,7 +517,7 @@
       this.scene.add(table);
 
       // Felt playing mat with rounded look (thin box)
-      const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(t), roughness: 0.95, metalness: 0 });
+      const feltMat = this._lit({ map: feltTexture(t), roughness: 0.95, metalness: 0 });
       feltMat.userData.bump = { map: noiseTexture(256, 4242, 5000, 6), scale: 1.6 };
       feltMat.userData.envIntensity = 0.08; // felt barely reflects
       const felt = new THREE.Mesh(new THREE.BoxGeometry(FRAMING.feltSize, 0.18, FRAMING.feltSize * 0.78), feltMat);
@@ -527,7 +527,7 @@
 
       // Leather-bound felt edge: a thin raised band framing the playing area.
       const bandCol = new THREE.Color(t.felt).lerp(new THREE.Color(0x1a120b), 0.72);
-      const bandMat = new THREE.MeshStandardMaterial({ color: bandCol, roughness: 0.48, metalness: 0.0 });
+      const bandMat = this._lit({ color: bandCol, roughness: 0.48, metalness: 0.0 });
       const fw = FRAMING.feltSize, fd = FRAMING.feltSize * 0.78, bw = 0.9;
       const band = new THREE.Group();
       for (const [w, d, x, z] of [[fw + bw * 2, bw, 0, -fd / 2 - bw / 2], [fw + bw * 2, bw, 0, fd / 2 + bw / 2],
@@ -541,7 +541,7 @@
       this._detailMats = [tableMat, feltMat];
 
       // Café backdrop: wall plane + window glow + shelf (simple silhouettes)
-      const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture(t), roughness: 1 });
+      const wallMat = this._lit({ map: wallTexture(t), roughness: 1 });
       const wall = new THREE.Mesh(new THREE.PlaneGeometry(200, 90), wallMat);
       wall.position.set(0, 30, -70);
       this.scene.add(wall);
@@ -553,7 +553,7 @@
       this.scene.add(winGlow);
       this.winGlow = winGlow;
       // Window mullions: a cross of dark bars over the glow.
-      const barMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(t.wall).multiplyScalar(0.55), roughness: 0.9 });
+      const barMat = this._lit({ color: new THREE.Color(t.wall).multiplyScalar(0.55), roughness: 0.9 });
       for (const [w, h, x, y] of [[1.2, 34, -38, 34], [46, 1.2, -38, 34], [47.5, 1.6, -38, 17.2], [47.5, 1.6, -38, 50.8]]) {
         const bar = new THREE.Mesh(new THREE.PlaneGeometry(w, h), barMat);
         bar.position.set(x, y, -68.8);
@@ -567,7 +567,7 @@
 
     _buildCup() {
       const THREE = this.THREE, t = this.theme;
-      const cupMat = new THREE.MeshPhysicalMaterial({ color: t.cupColor, roughness: 0.3, metalness: 0.02, clearcoatRoughness: 0.12 });
+      const cupMat = this._lit({ color: t.cupColor, roughness: 0.3, metalness: 0.02, clearcoatRoughness: 0.12 }, true);
       cupMat.userData.glaze = 0.9;
       this._glazeMats = [cupMat];
       const CUP = { x: -22.5, z: -9 }; // clear of the chain serpentine
@@ -616,7 +616,7 @@
         this._steam.geometry.dispose();
         this._steam.material.dispose();
       }
-      const count = STEAM[this.gfx.particles] || STEAM.low;
+      const count = this.gfx.budget ? this.gfx.budget.steam : (STEAM[this.gfx.particles] || STEAM.low);
       const positions = new Float32Array(count * 3);
       const colors = new Float32Array(count * 4);
       const phases = new Float32Array(count);
@@ -799,6 +799,7 @@
     // Sync from an immutable snapshot. instant = settle immediately.
     syncState(view, instant) {
       const THREE = this.THREE;
+      this._lastView = view;
       const seen = new Set();
       const want = new Map(); // tileId -> {pos, rotY, faceUp, lift}
 
@@ -883,19 +884,20 @@
       const mats = [];
       // Physical ceramic: clearcoat glaze on detailed surfaces (0 = plain).
       const glaze = this.gfx.detail === 'detailed';
-      const edgeMat = new THREE.MeshPhysicalMaterial({
+      const edgeMat = this._lit({
         color: this.theme.tileEdge, roughness: 0.4, metalness: 0.02,
         clearcoat: glaze ? 0.55 : 0, clearcoatRoughness: 0.22,
-      });
-      const faceMat = new THREE.MeshPhysicalMaterial({
+      }, true);
+      const faceMat = this._lit({
         color: this.theme.tileBody, roughness: 0.35, metalness: 0.02,
         clearcoat: glaze ? 0.8 : 0, clearcoatRoughness: 0.16,
-      });
+      }, true);
       const backMat = new THREE.MeshStandardMaterial({
         map: tileBackTexture(this.theme, this.texCache), roughness: 0.5,
       });
       // ExtrudeGeometry groups: 0 = front/back faces, 1 = side walls
-      const mesh = new THREE.Mesh(makeTileGeometry(), [faceMat, edgeMat]);
+      const b = this.gfx.budget || {};
+      const mesh = new THREE.Mesh(makeTileGeometry(b.tileCurve, b.tileBevel), [faceMat, edgeMat]);
       mesh.castShadow = this.gfx.shadowMap > 0;
       mesh.userData.caster = true;
       mesh.receiveShadow = true;
@@ -917,8 +919,9 @@
     _setTileFace(entry, a, b) {
       const detailed = this.gfx.detail === 'detailed';
       entry.face = [a, b];
-      const tex = tileFaceTexture(a, b, this.theme, this.texCache, detailed, false);
-      const bump = detailed ? tileFaceTexture(a, b, this.theme, this.texCache, true, true) : null;
+      const size = this.gfx.budget ? this.gfx.budget.faceTexture : 0;
+      const tex = tileFaceTexture(a, b, this.theme, this.texCache, detailed, false, size);
+      const bump = detailed ? tileFaceTexture(a, b, this.theme, this.texCache, true, true, size) : null;
       if (entry.faceMat.map !== tex || entry.faceMat.bumpMap !== bump) {
         entry.faceMat.map = tex;
         entry.faceMat.bumpMap = bump;
@@ -1192,7 +1195,14 @@
         if (e.face && e.faceUpShown) this._setTileFace(e, e.face[0], e.face[1]);
       }
       // Steam density.
-      if (this._steam && prev.particles !== g.particles) this._buildSteam();
+      if (this._steam && (prev.particles !== g.particles || !prev.budget || prev.budget.steam !== g.budget.steam)) this._buildSteam();
+      // Preset asset variants: material class (in place), tile LOD and face textures (tiles rebuilt).
+      const pb = prev.budget || {}, nb = g.budget || {};
+      if (prev.budget && pb.material !== nb.material) this._swapLitMaterials();
+      if (prev.budget && (pb.tileCurve !== nb.tileCurve || pb.tileBevel !== nb.tileBevel || pb.material !== nb.material) && this._lastView) {
+        for (const key of [...this.tileMeshes.keys()]) this._removeTile(key);
+        this.syncState(this._lastView, true);
+      }
       // Ambience: restore the base lighting when the shimmer stops.
       if (this._winOpacity === undefined) this._winOpacity = this.winGlow.material.opacity;
       this.keyLight.intensity = this._keyBase;
@@ -1217,6 +1227,49 @@
         if (g.showFps && !fps.textContent) fps.textContent = '… fps';
       }
       this.resize();
+    }
+
+    /** Lit material for the preset budget: Lambert on Low, Standard on Balanced, Physical glaze (where `physical`) above. */
+    _lit(params, physical) {
+      const THREE = this.THREE;
+      const kind = (this.gfx && this.gfx.budget && this.gfx.budget.material) || 'physical';
+      let m;
+      if (kind === 'lambert') {
+        const { roughness, metalness, clearcoat, clearcoatRoughness, ...lp } = params;
+        m = new THREE.MeshLambertMaterial(lp);
+      } else if (physical && kind === 'physical') m = new THREE.MeshPhysicalMaterial(params);
+      else {
+        const { clearcoat, clearcoatRoughness, ...sp } = params;
+        m = new THREE.MeshStandardMaterial(sp);
+      }
+      m.userData.lit = { params, physical };
+      return m;
+    }
+
+    /** Swap every budget-classed environment material for the current class, keeping its live state. */
+    _swapLitMaterials() {
+      const swapped = new Map();
+      this.scene.traverse((o) => {
+        if (!o.material || Array.isArray(o.material) || !o.material.userData.lit || o.userData.entry) return;
+        const old = o.material;
+        let m = swapped.get(old);
+        if (!m) {
+          m = this._lit(old.userData.lit.params, old.userData.lit.physical);
+          Object.assign(m.userData, old.userData);
+          m.color.copy(old.color);
+          m.map = old.map;
+          m.bumpMap = old.bumpMap;
+          m.bumpScale = old.bumpScale;
+          if (m.isMeshPhysicalMaterial) m.clearcoat = old.clearcoat || 0;
+          swapped.set(old, m);
+        }
+        o.material = m;
+      });
+      for (const list of [this._detailMats, this._glazeMats]) {
+        if (list) list.forEach((mm, i) => { if (swapped.has(mm)) list[i] = swapped.get(mm); });
+      }
+      for (const old of swapped.keys()) old.dispose();
+      this._applyReflections();
     }
 
     setQuality(name) { // legacy entry point: a bare preset name
@@ -1288,7 +1341,8 @@
         composer.addPass(new A.RenderPass(this.scene, this.camera));
         if (g.ao !== 'off') {
           // Contact darkening under tiles, cup and rails; scaled to tile size.
-          const ao = new A.GTAOPass(this.scene, this.camera, W, H);
+          const aoRes = (g.budget && g.budget.aoRes) || 1; // per-preset post resolution
+          const ao = new A.GTAOPass(this.scene, this.camera, Math.round(W * aoRes), Math.round(H * aoRes));
           ao.output = A.GTAOPass.OUTPUT.Default;
           ao.blendIntensity = 0.75;
           ao.updateGtaoMaterial({ radius: 1.1, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: g.ao === 'high' ? 16 : 8 });
@@ -1297,7 +1351,8 @@
         }
         if (g.bloom === 'on') {
           // High threshold: only the window glow and glowing markers bloom.
-          composer.addPass(new A.UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.4, BLOOM_THRESHOLD));
+          const bloomRes = (g.budget && g.budget.bloomRes) || 1;
+          composer.addPass(new A.UnrealBloomPass(new THREE.Vector2(Math.round(W * bloomRes), Math.round(H * bloomRes)), 0.45, 0.4, BLOOM_THRESHOLD));
         }
         if (g.grade === 'on') composer.addPass(new A.ShaderPass(GradeShader));
         composer.addPass(new A.OutputPass());

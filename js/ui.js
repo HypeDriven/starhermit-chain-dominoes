@@ -315,13 +315,15 @@
       const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
         (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
       this._gpu = gpu;
-      this._gpuPreset = G().detectPreset(gpu, mobile);
+      // StarHermit hardware level → Auto preset (SwiftShader = level 0 → Low; phones cap at Balanced).
+      this._gpuLevel = G().detectLevel(gpu, window.StarHermitGpu ? window.StarHermitGpu.detectSystem() : { mobile });
+      this._gpuPreset = G().presetForLevel(this._gpuLevel);
       return gpu;
     }
 
     _gfxResolved() {
       this._gfxDetect();
-      return G().resolve(this._gfxSaved(), this._gpuPreset);
+      return G().resolve(this._gfxSaved(), this._gpuPreset, this._gpuLevel);
     }
 
     _gfxLocale() { return G().pickLocale(lang()); }
@@ -453,7 +455,7 @@
         const pr = Math.min(window.devicePixelRatio || 1, r.cap) * r.scale;
         pixels = [Math.round(window.innerWidth * pr), Math.round(window.innerHeight * pr)];
       }
-      $('gfx-summary').textContent = (this._gpu || T('unknown_gpu')) + ' · ' + G().describe(r, pixels, L);
+      $('gfx-summary').textContent = (this._gpu || T('unknown_gpu')) + ' · ' + T('level', { n: this._gpuLevel }) + ' · ' + G().describe(r, pixels, L);
       const failed = (info && info.postFailed) || (this._postFailed && r.post);
       $('gfx-post-note').classList.toggle('hidden', !(failed && r.post));
     }
