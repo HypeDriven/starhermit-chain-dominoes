@@ -273,16 +273,19 @@ Phones and tablets pace Auto FPS at half the display refresh rate ("Auto (half r
 simultaneous sounds (shared `game-options.js`).
 
 **Benchmark** (`node tools/gfx-bench.mjs chain-dominoes`; hook `tests/gfx-bench.mjs` picks the preset in Settings,
-starts a 4-player Practice table and keeps playing legal moves through the hand and end buttons). Measured 2026-10-17
-(AMD Radeon iGPU level 2 GPU time projected to the preset's floor level; RTX 5090 CPU time):
+starts a 4-player Practice table and keeps playing legal moves through the hand and end buttons). Measured 2026-10-18
+with the final gate (AMD Radeon iGPU level 2 GPU time minus the same page and preset re-recorded with every WebGL draw
+call skipped, percentile for percentile, projected to the preset's floor level: typical p50 ≤ 12 ms, slow p90 ≤ 14 ms;
+RTX 5090 CPU p90 ≤ 6 ms):
 
-- Desktop 1920×1080: FAIL low (GPU p90 11.91 ms → ≈ 18.02 ms at level 0, CPU 1.00 ms); PASS balanced (19.48 →
-  ≈ 12.87 ms at level 4, CPU 1.90 ms); PASS high (28.35 → ≈ 5.41 ms at level 10, CPU 1.90 ms); PASS ultra (87.69 →
-  ≈ 3.93 ms at level 17, CPU 2.60 ms).
-- Mobile 390×844 @3×: FAIL low (16.92 → ≈ 25.60 ms, CPU 1.00 ms); PASS balanced (15.54 → ≈ 10.27 ms at level 4,
-  CPU 1.30 ms).
-- Low is at the benchmark's floor on this machine: a blank page that only clears a full-window WebGL canvas
-  measures 8–11 ms p90 desktop (≈ 12–17 ms at level 0) and 13–15 ms in the mobile profile.
+- Desktop 1920×1080: PASS low (GPU p50 10.19 / p90 14.01 ms, draws skipped 11.04 / 11.90 → typical 0.00, slow 3.19
+  at level 0; CPU p90 0.60 ms); PASS balanced (GPU p50 10.40 / p90 13.07 ms, draws skipped 9.96 / 13.30 → typical
+  0.29, slow 0.00 at level 4; CPU p90 1.50 ms); PASS high (GPU p50 17.08 / p90 20.41 ms, draws skipped 7.42 /
+  14.54 → typical 1.84, slow 1.12 at level 10; CPU p90 1.60 ms); PASS ultra (GPU p50 62.35 / p90 67.93 ms, draws
+  skipped 11.17 / 12.55 → typical 2.29, slow 2.48 at level 17; CPU p90 1.40 ms).
+- Mobile 390×844 @3×: PASS low (GPU p50 14.19 / p90 16.60 ms, draws skipped 14.26 / 16.62 → typical 0.00, slow
+  0.00 at level 0; CPU p90 0.60 ms); PASS balanced (GPU p50 14.18 / p90 18.19 ms, draws skipped 13.89 / 16.70 →
+  typical 0.19, slow 0.98 at level 4; CPU p90 1.00 ms).
 
 **Motion.** Tiles move on a critically damped spring (k = 90); selection lifts 0.9 units and adds a 0.25 emissive
 tint plus a grounded ring; end rings pulse ±8 %; steam drifts on the CPU; the round-end shake is 0.15 units decaying.
