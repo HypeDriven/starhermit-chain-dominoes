@@ -2,12 +2,15 @@
   "name": "chain-dominoes",
   "version": "1.0.0",
   "private": true,
-  "description": "Chain Dominoes — café-tabletop tile game (browser, self-contained).",
+  "description": "Chain Dominoes — café-tabletop tile game, on the StarHermit engine.",
   "scripts": {
-    "start": "python3 -m http.server 8571",
-    "test": "node --test tests/gfx.test.js tests/platform.test.mjs tests/i18n.test.mjs && node tests/rules.test.js && node tests/content.test.js && node tests/server.test.js",
-    "test:browser": "node tests/browser.test.js",
-    "test:e2e": "node tests/e2e.mjs"
+    "test": "npm run test:unit && npm run test:native",
+    "test:unit": "node --test tests/progress.test.mjs tests/session.test.mjs tests/i18n.test.mjs && node tests/rules.test.js && node tests/content.test.js && node tests/server.test.js",
+    "test:native": "node tests/native.mjs",
+    "test:browser": "node tools/browser-play.mjs .",
+    "package": "node tools/package-web.mjs",
+    "css": "node tools/css.mjs",
+    "plays": "node tools/gen-play.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1"

@@ -1,0 +1,143 @@
+/* Chain Dominoes — the browser build's css/style.css rewritten class-based
+   for the engine's UI (`npm run css` converts it into assets/ui-style.json).
+   Element selectors, ids, attribute selectors, @media, pseudo-elements and
+   color-mix() do not convert: every widget names its classes, the
+   breakpoints are layouts picked in native/screens.ts, the dominoes are
+   drawn by hand, and the theme's colours (and their mixes) are tokens that
+   native/style.ts computes per table theme and colour-vision palette and
+   sets at run time. The values below are Ceramic Classic's. */
+
+:root {
+  --bg: #241c15;
+  --bg-glow: #3d2b1b;
+  --panel: #2f261d;
+  --panel-2: #3a2f23;
+  --panel-2-hover: #5a4128;
+  --panel-soft: #2f261de0;
+  --text: #f2ead9;
+  --muted: #b8ac97;
+  --accent: #d98e3a;
+  --accent-hover: #e3aa6b;
+  --accent-2: #4f8f74;
+  --good: #6fbf8f;
+  --bad: #e06c5c;
+  --banner: #34291e;
+  --unlock: #4b3622;
+  --focus-ring: #ffd27a;
+  --ink-on-accent: #1a1208;
+  --line: #ffffff12;
+  --line-strong: #ffffff26;
+}
+
+* { box-sizing: border-box; }
+
+/* ------------------------------------------------------------- buttons */
+.btn {
+  min-height: 44px; min-width: 44px; padding: 10px 18px;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid #ffffff17; border-radius: 12px;
+  font-weight: 600; text-align: center;
+}
+.btn:hover { background: var(--panel-2-hover); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; }
+.btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.btn-primary { background: var(--accent); color: var(--ink-on-accent); border-color: #00000000; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-danger { background: #57251d; border-color: #7d3a2e; }
+.btn-danger:hover { background: #6d3025; }
+.btn-ghost { background: #00000000; border-color: #00000000; color: var(--muted); }
+.btn-ghost:hover { color: var(--text); background: #ffffff0f; }
+.btn-big { font-size: 18.4px; padding: 16px 30px; min-height: 56px; }
+.btn-sm { min-height: 34px; padding: 5px 12px; font-size: 13.6px; }
+.btn-menu { background: var(--panel-soft); }
+.btn-action { padding: 10px 12px; }
+.btn-narrow { padding: 8px 4px; font-size: 12.8px; min-width: 48px; }
+.kbd { font-size: 11.5px; color: var(--text); opacity: 0.65; border: 1px solid var(--text); border-radius: 4px; padding: 0 5px; }
+.kbd-plain { font-size: 13px; color: var(--text); background: var(--panel-2); border: 1px solid #ffffff33; border-radius: 4px; padding: 1px 6px; }
+.badge { background: var(--accent-2); color: #ffffff; font-size: 11.2px; border-radius: 999px; padding: 2px 8px; font-weight: 700; }
+.menu-sub { color: var(--muted); font-weight: 400; font-size: 13.6px; }
+.end-cap {
+  min-width: 44px; min-height: 44px; padding: 0;
+  border-radius: 22px; border: 3px solid var(--accent-2);
+  background: #ffffff0d; color: var(--text); font-weight: 800; font-size: 17.6px;
+}
+.end-cap:hover { border-color: var(--accent); }
+.lb-tab { min-height: 36px; padding: 6px 14px; border: 1px solid #ffffff26; background: #00000000; border-radius: 999px; color: var(--text); }
+.lb-tab.active { background: var(--accent); color: var(--ink-on-accent); border-color: #00000000; font-weight: 700; }
+
+/* ---------------------------------------------------------------- text */
+.h1 { font-size: 54px; font-weight: 700; color: var(--text); letter-spacing: 1px; }
+.h1-small { font-size: 34px; font-weight: 700; color: var(--text); }
+.h2 { font-size: 25.6px; font-weight: 700; color: var(--text); }
+.h3 { font-size: 18.7px; font-weight: 700; color: var(--text); }
+.h3-accent { font-size: 18.7px; font-weight: 700; color: var(--accent); }
+.body { color: var(--text); }
+.tagline { color: var(--muted); text-align: center; }
+.screen-sub { color: var(--muted); }
+.muted { color: var(--muted); font-size: 14.4px; }
+.host-status { color: var(--muted); font-size: 12.8px; text-align: center; }
+.good { color: var(--good); font-weight: 700; }
+
+/* ---------------------------------------------------------- card lists */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.card-title { font-weight: 700; color: var(--text); }
+.card-desc { color: var(--muted); font-size: 14.4px; }
+.journey-item { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-height: 64px; text-align: left; }
+.journey-item:hover { background: var(--panel-2); }
+.journey-item:disabled { opacity: 0.45; }
+.journey-item:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.journey-mastery { border-color: var(--accent); }
+.journey-num { min-width: 40px; min-height: 40px; border-radius: 20px; background: var(--panel-2); border: 2px solid #ffffff1f; color: var(--text); font-weight: 800; text-align: center; }
+.journey-num-mastery { min-width: 40px; min-height: 40px; border-radius: 20px; background: var(--panel-2); border: 2px solid var(--accent); color: var(--accent); font-weight: 800; text-align: center; }
+.journey-name { font-weight: 700; color: var(--text); }
+.journey-meta { color: var(--muted); font-size: 13.1px; }
+.journey-stars { color: var(--accent); font-size: 16.8px; }
+.stars-total { color: var(--accent); font-weight: 700; }
+
+/* --------------------------------------------------------------- setup */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.fact { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+.fact-k { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+.fact-v { color: var(--text); font-weight: 700; }
+.field-label { color: var(--text); }
+
+/* ================================================================ GAME */
+.statusbar { background: var(--panel-soft); border-bottom: 1px solid var(--line); padding: 6px 10px; }
+.hud-objective { color: var(--text); font-weight: 600; font-size: 15.2px; }
+.hud-clock { color: var(--accent); font-weight: 800; }
+.score-chip { background: var(--panel-2); border-radius: 999px; padding: 4px 12px; color: var(--text); font-size: 14.4px; }
+.score-chip-turn { background: var(--panel-2); border-radius: 999px; padding: 2px 10px; color: var(--text); font-size: 14.4px; border: 2px solid var(--accent); }
+.chip-pip { color: var(--muted); font-weight: 400; font-size: 14.4px; }
+.rail { background: var(--panel-soft); padding: 14px; }
+.rail-left { background: var(--panel-soft); padding: 14px; border-right: 1px solid var(--line); }
+.rail-right { background: var(--panel-soft); padding: 14px; border-left: 1px solid var(--line); }
+.rail-title { color: var(--muted); font-size: 12.8px; letter-spacing: 2px; font-weight: 700; }
+.big-end { background: var(--panel-2); border-radius: 10px; padding: 6px 14px; min-width: 52px; color: var(--text); font-size: 25.6px; font-weight: 800; text-align: center; }
+.turn-indicator { background: var(--panel-2); border-radius: 8px; padding: 10px; color: var(--text); font-weight: 600; text-align: center; }
+.turn-yours { background: var(--panel-2); border-radius: 8px; padding: 8px; color: var(--text); font-weight: 600; text-align: center; border: 2px solid var(--good); }
+.tutorial-banner { background: var(--banner); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 16px; box-shadow: 0 8px 24px #00000073; }
+.step-count { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+.chain-strip { background: var(--panel-soft); border-radius: 10px; padding: 6px 8px; min-height: 46px; }
+.strip-empty { color: var(--muted); font-size: 13.6px; }
+.hand-tray { background: var(--panel-soft); border-top: 1px solid var(--line); padding: 8px 10px 10px 10px; }
+.hand-label { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+.drawer-toggle { min-height: 40px; padding: 6px 12px; background: var(--panel-2); color: var(--text); border: 1px solid #ffffff17; border-radius: 12px; font-weight: 600; }
+
+/* ------------------------------------------------------------ overlays */
+.breakdown-row { background: var(--panel-2); border-radius: 8px; padding: 8px 12px; color: var(--text); }
+.breakdown-win { background: var(--panel-2); border-radius: 8px; padding: 6px 10px; color: var(--text); border: 2px solid var(--good); }
+.breakdown-head { padding: 4px 12px; color: var(--muted); font-size: 12.8px; letter-spacing: 1px; }
+.pts { font-weight: 800; color: var(--text); }
+.results-stars { color: var(--accent); font-size: 32px; letter-spacing: 6px; }
+.unlock-chip { background: var(--unlock); border: 1px solid var(--accent); border-radius: 10px; padding: 8px 12px; color: var(--text); }
+.toast { background: var(--accent); color: var(--ink-on-accent); font-weight: 700; padding: 12px 22px; border-radius: 999px; box-shadow: 0 10px 30px #00000073; text-align: center; }
+.captions { color: var(--text); background: #0000008c; border-radius: 6px; padding: 3px 10px; font-size: 12.8px; }
+
+/* ------------------------------------------------------------ profile */
+.stat-dt { color: var(--muted); }
+.stat-dd { color: var(--text); font-weight: 700; }
+.ach-row { color: var(--text); opacity: 0.5; }
+.ach-got { color: var(--text); }
+.rule-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.note { background: var(--banner); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 13.6px; }

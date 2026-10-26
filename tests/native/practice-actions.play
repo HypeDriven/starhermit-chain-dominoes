@@ -1,0 +1,70 @@
+# Practice (a 3-player table): the hint, a tile selected by the arrows and
+# played on its end (A/D or Enter), Undo, the top view, the Table drawer,
+# Pause and its Settings and back, Leave, Continue Match from the title, then
+# a speed challenge with its clock.
+until 300 Chain Dominoes
+frames 20
+click Practice
+until 60 Take a seat
+frames 10
+click 2 players
+frames 10
+click 3 players
+frames 10
+save practice-setup
+click Take a seat
+until 400 Your turn
+frames 30
+key KeyH 2
+frames 20
+save hint
+key ArrowRight 2
+frames 10
+key ArrowRight 2
+frames 10
+save arrows
+click Top view
+frames 30
+save top-view
+click Toggle table panel
+until 60 Open ends
+frames 10
+save drawer
+click Close
+frames 10
+key KeyP 2
+until 60 Paused
+frames 10
+click Settings
+until 60 Keyboard & gamepad
+frames 10
+key Escape 2
+until 60 Resume
+frames 10
+click Resume
+frames 10
+key KeyP 2
+until 60 Leave match
+frames 10
+click Leave match
+until 60 Continue Match
+frames 10
+save title-continue
+click Continue Match
+until 200 YOUR HAND
+frames 30
+save continued
+key KeyP 2
+until 60 Leave match
+frames 10
+click Leave match
+until 60 Challenges
+frames 10
+click Challenges
+until 60 Speed Roast
+frames 10
+click Start challenge
+until 200 YOUR HAND
+frames 60
+expect 3:5
+save clock

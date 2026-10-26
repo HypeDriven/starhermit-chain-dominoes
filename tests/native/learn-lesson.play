@@ -1,0 +1,34 @@
+# Learn to Play: lesson 1 (Match the Ends) by its steps — select 4|6, play it
+# on the right end cap, the guide answers, pass with S — to its outro, then
+# the next lesson (The Boneyard): draw with W, play the drawn 3|6 on the
+# left end cap.
+until 300 Chain Dominoes
+frames 20
+click Learn to Play
+until 60 Six short lessons
+frames 10
+click Start
+until 200 Step 1 of 3
+frames 30
+save lesson1
+click 4 | 6 domino
+frames 10
+click Play selected tile on right end
+until 300 Step 3 of 3
+frames 30
+key KeyS 2
+until 300 Match the Ends — complete
+frames 30
+save lesson1-done
+click Next lesson
+until 200 Step 1 of 5
+frames 30
+key KeyW 2
+until 200 Step 2 of 5
+frames 20
+click 3 | 6 domino
+frames 10
+click Play selected tile on left end
+until 300 Step 3 of 5
+frames 10
+save lesson2

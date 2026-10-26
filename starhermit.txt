@@ -1,6 +1,5 @@
 name=Chain Dominoes
 description=Match domino ends, empty your hand, and keep your remaining pip count low to outscore your opponents.
-launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
 server=score-script.js
 version=1.0.0
@@ -8,17 +7,53 @@ contentVersion=1
 players=2-4
 orientation=any
 cover=cover.jpg
-control.navLeft=ArrowLeft | Select previous tile
-control.navRight=ArrowRight | Select next tile
-control.navUp=ArrowUp | Navigate up
-control.navDown=ArrowDown | Navigate down
-control.confirm=Enter | Confirm
+
+# StarHermit engine script game: one package, played natively by the
+# StarHermit client and in browsers by the engine's web runtime. Browsers open
+# launch=index.html, the loader `npm run package` writes (it pins the engine
+# on wiki.starhermit.com by hash; never edit it). Re-run `npm run package`
+# after every change and commit index.html + starhermit-files.json.
+launch=index.html
+engine.api=1
+engine.entry=native/main.ts
+engine.version=1.15.0
+engine.minor=17
+engine.capabilities=platform,storage,clipboard
+
+# Keyboard controls (players rebind keys and pads in the runtime's Options).
+# The table is also played with the pointer or touch: tap a hand tile to
+# select it, then an end marker (or tap the tile again when only one end fits).
+control.left=ArrowLeft | Select previous tile
+control.right=ArrowRight | Select next tile
+control.up=ArrowUp | Navigate up
+control.down=ArrowDown | Navigate down
+control.confirm=Enter+NumpadEnter | Confirm
 control.cancel=Escape | Cancel
 control.pause=KeyP | Pause
 control.undo=KeyU | Undo
 control.hint=KeyH | Hint
-control.cameraReset=KeyC | Reset camera
-control.endLeft=KeyA | Play on left end
-control.endRight=KeyD | Play on right end
+control.camera=KeyC | Reset camera
+control.end_left=KeyA | Play on left end
+control.end_right=KeyD | Play on right end
 control.draw=KeyW | Draw
 control.pass=KeyS | Pass
+engine.group.left=Hand
+engine.group.end_left=Table
+engine.group.pause=Game
+
+# Gamepad defaults: the D-pad or left stick picks a tile, A confirms, B
+# cancels, Start pauses, X draws, Y hints, the shoulders play on an end.
+engine.gamepad.left=DpadLeft+LeftStickLeft
+engine.gamepad.right=DpadRight+LeftStickRight
+engine.gamepad.up=DpadUp+LeftStickUp
+engine.gamepad.down=DpadDown+LeftStickDown
+engine.gamepad.confirm=South
+engine.gamepad.cancel=East
+engine.gamepad.pause=Start
+engine.gamepad.draw=West
+engine.gamepad.hint=North
+engine.gamepad.end_left=LeftShoulder
+engine.gamepad.end_right=RightShoulder
+engine.gamepad.pass=LeftTrigger
+engine.gamepad.undo=Select
+engine.gamepad.camera=RightStickPress

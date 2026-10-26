@@ -1,0 +1,74 @@
+# The title's screens: Journey (stage 2 locked), the Daily Table setup,
+# Challenges, Learn to Play, How to Play, Settings (numbers on the tiles,
+# the theme), Profile (a guest names themself), Pass & Play, back to the title.
+until 300 Chain Dominoes
+frames 20
+save title
+click Journey
+until 60 Forty tables
+frames 10
+expect Open Ends, locked
+save journey
+key Escape 2
+until 60 Daily Table
+frames 10
+click Daily Table
+until 60 One shared seed for everyone today
+frames 10
+save daily
+click Back
+until 60 Challenges
+frames 10
+click Challenges
+until 60 Start challenge
+frames 10
+save challenges
+key Escape 2
+until 60 Learn to Play
+frames 10
+click Learn to Play
+until 60 Six short lessons
+frames 10
+save learn
+key Escape 2
+until 60 How to Play
+frames 10
+click How to Play
+until 60 Drawing & passing
+frames 10
+save help
+key Escape 2
+until 60 Settings
+frames 10
+click Settings
+until 60 Keyboard & gamepad
+frames 10
+click Show numbers on tiles
+frames 10
+save settings
+click Show numbers on tiles
+frames 5
+key Escape 2
+until 60 Profile
+frames 10
+click Profile
+until 60 Achievements
+frames 10
+click input-name
+frames 5
+type {Backspace}{Backspace}{Backspace}{Backspace}{Backspace}Ada
+frames 5
+click Save name
+until 30 Name saved: Ada
+frames 20
+save profile
+key Escape 2
+until 60 Pass & Play
+frames 10
+click Pass & Play
+until 60 Play with friends
+frames 10
+click Pass-and-play
+until 200 Player 1’s hand
+frames 30
+save hotseat

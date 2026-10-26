@@ -6,8 +6,8 @@
  */
 (function (root, factory) {
   const deps = typeof module === 'object' && module.exports
-    ? { R: require('./rules.js'), C: require('./content.js'), AI: require('./ai.js'), P: require('./platform.js') }
-    : { R: root.ChainDominoesRules, C: root.ChainDominoesContent, AI: root.ChainDominoesAI, P: root.ChainDominoesPlatform };
+    ? { R: require('./rules.js'), C: require('./content.js'), AI: require('./ai.js'), P: require('./progress.js') }
+    : { R: root.ChainDominoesRules, C: root.ChainDominoesContent, AI: root.ChainDominoesAI, P: root.ChainDominoesProgress };
   const api = factory(deps.R, deps.C, deps.AI, deps.P);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.ChainDominoesSession = api;
@@ -51,6 +51,12 @@
       this.selectedTile = null;
       this._finished = false;
       this.hotseat = false;            // 2+ humans sharing one device (pass-and-play)
+      // Timers: the engine client passes its own (runtime fixed steps, so AI
+      // turns replay exactly in play scripts) and drives the clock itself
+      // through advanceClock(); the defaults are the platform's.
+      this._setTimeout = (opts.timers && opts.timers.setTimeout) || ((fn, ms) => setTimeout(fn, ms));
+      this._clearTimeout = (opts.timers && opts.timers.clearTimeout) || ((id) => clearTimeout(id));
+      this._externalClock = !!opts.externalClock;
     }
 
     /* ------------------------------------------------------------ start */
@@ -106,21 +112,27 @@
     /* ------------------------------------------------------------- clock */
     _startClock() {
       this._stopClock();
+      if (this._externalClock) return;
       let last = Date.now();
       this._tickTimer = setInterval(() => {
         if (this.paused) { last = Date.now(); return; }
         const now = Date.now();
-        this._elapsedMs += now - last;
+        this.advanceClock(now - last);
         last = now;
-        if (this.options.timeLimitSec > 0 && !this._finished) {
-          const limit = this.options.timeLimitSec * 1000 * (this._assist() ? 1.5 : 1);
-          if (this._elapsedMs >= limit) {
-            this._finishByTimeout();
-          } else if (this.onEvent) {
-            this.onEvent('clock', { remainingMs: limit - this._elapsedMs });
-          }
-        }
       }, 250);
+    }
+    /** The match clock advances by `ms` of unpaused play (the time limit, the clock event). */
+    advanceClock(ms) {
+      if (!this.state || this._finished || this.paused) return;
+      this._elapsedMs += ms;
+      if (this.options.timeLimitSec > 0) {
+        const limit = this.options.timeLimitSec * 1000 * (this._assist() ? 1.5 : 1);
+        if (this._elapsedMs >= limit) {
+          this._finishByTimeout();
+        } else if (this.onEvent) {
+          this.onEvent('clock', { remainingMs: limit - this._elapsedMs });
+        }
+      }
     }
     _stopClock() { if (this._tickTimer) { clearInterval(this._tickTimer); this._tickTimer = null; } }
     _assist() { return !!(this.store && this.store.settings.timingAssist); }
@@ -225,7 +237,7 @@
 
     _maybeRunAI() {
       // Never stack timers: a second pending turn would let the AI move twice.
-      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
+      if (this._aiTimer) { this._clearTimeout(this._aiTimer); this._aiTimer = null; }
       if (!this.state || this._finished || this.paused) return;
       if (this.state.phase !== 'active') return;
       const cur = this.state.players[this.state.turn];
@@ -233,7 +245,7 @@
       if (this.audio) this.audio.opponentTurn();
       const scripted = this._tutorial && cur.difficulty === 'scripted';
       const delay = scripted ? 650 : (this.mode === 'practice' ? 550 : 750) + this._aiRng.next() * 400;
-      this._aiTimer = setTimeout(() => this._runOneAI(), delay);
+      this._aiTimer = this._setTimeout(() => this._runOneAI(), delay);
     }
 
     _runOneAI(fast) {
@@ -285,7 +297,7 @@
     // Finish instantly (skip/fast-forward): settle every object into the
     // exact deterministic end state.
     skipToSettled() {
-      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
+      if (this._aiTimer) { this._clearTimeout(this._aiTimer); this._aiTimer = null; }
       let guard = 0;
       while (this.state && this.state.phase === 'active' &&
              this.state.players[this.state.turn].kind === 'ai' && guard++ < 500) {
@@ -439,7 +451,7 @@
     }
     undo() {
       if (!this.canUndo()) return { ok: false };
-      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
+      if (this._aiTimer) { this._clearTimeout(this._aiTimer); this._aiTimer = null; }
       // Restore to just before the human's last command (AI moves after it
       // are replayed deterministically only if the human repeats choices —
       // simplest fair rule: roll back to the human's previous decision point).
@@ -512,7 +524,7 @@
             this.store.progress.tutorials.push(def.id);
             if (C.TUTORIALS.every(t => this.store.progress.tutorials.includes(t.id))) {
               const u = P.unlock(this.store, 'mechanic_mastery');
-              if (u && this.onEvent) setTimeout(() => this.onEvent('achievement', u), 600);
+              if (u && this.onEvent) this._setTimeout(() => this.onEvent('achievement', u), 600);
             }
             this.store.saveNow();
           }
@@ -539,7 +551,7 @@
     /* ------------------------------------------------------- view / pause */
     pause() {
       this.paused = true;
-      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
+      if (this._aiTimer) { this._clearTimeout(this._aiTimer); this._aiTimer = null; }
       if (this.renderer) this.renderer.pause();
     }
     resume() {
@@ -551,7 +563,7 @@
 
     leave() {
       this._stopClock();
-      if (this._aiTimer) { clearTimeout(this._aiTimer); this._aiTimer = null; }
+      if (this._aiTimer) { this._clearTimeout(this._aiTimer); this._aiTimer = null; }
       this._finished = true;
     }
 
