@@ -593,6 +593,7 @@ function actionButton(a: Action, width: number, showKey: boolean, narrow = false
   const opts: ui.ButtonOptions = { disabled: a.disabled };
   if (a.selected !== undefined) opts.selected = a.selected;
   if (narrow) opts.content = () => ui.style({ text: { align: "center", size: 12 } }).paragraph(a.text, width - 10, { weight: "600" });
+  else if (buttonWidth(a.text, style) > width) opts.content = () => ui.style({ text: { align: "center" } }).paragraph(a.text, width - 16, { weight: "600" });
   else if (showKey && a.key) opts.content = () => ui.row(`${a.id}-face`, () => { ui.label(a.text, { weight: "600" }); ui.style("kbd").label(a.key); }, { spacing: 8, align: "center" });
   if (ui.style(...style, { width }).id(a.id).button(a.text, opts)) a.act();
 }
@@ -619,7 +620,9 @@ function gameScreen(L: Layout): void {
   const top = statusH;
   // hand tray (bottom)
   const tileW = 44, tileH = L.shortLand ? 64 : L.phone ? 74 : 76;
-  const trayR = handTray(L, tileW, tileH);
+  // Short landscape: the Actions column runs down beside the hand tray too.
+  const trayW = L.shortLand ? L.lw - 64 : L.lw;
+  const trayR = handTray(L, tileW, tileH, trayW, L.shortLand && !left ? "bottom-start" : L.shortLand ? "bottom-end" : "bottom-start");
   const trayH = trayR.height / L.sc;
   let railL = 0, railR = 0, actionsH = 0;
   const midH = L.lh - top - trayH;
@@ -654,7 +657,7 @@ function gameScreen(L: Layout): void {
       for (const a of actions()) actionButton(a, railR - 12, false, true);
       ui.spacer();
       turnIndicator(railR - 12, true);
-    }, { style: left ? "rail-left" : "rail-right", width: railR, height: midH, spacing: 6, padding: 6, align: "center" });
+    }, { style: left ? "rail-left" : "rail-right", width: railR, height: L.shortLand ? L.lh - top : midH, spacing: L.shortLand ? 4 : 6, padding: 6, align: "center" });
   }
   const playX = left ? railR : railL;
   const playW = L.lw - railL - railR;
@@ -669,8 +672,10 @@ function gameScreen(L: Layout): void {
   }
   // tutorial banner (top of the playfield)
   if (v.tutorial) {
-    const bw = Math.min(520, playW * 0.92);
-    ui.place("tutorial-banner", { anchor: "top-start", x: playX + (playW - bw) / 2, y: top + (L.wide ? 10 : 52) }, () => {
+    // Short landscape: beside the Table button, so the chain strip stays in view.
+    const bw = L.shortLand ? Math.min(520, playW - 136) : Math.min(520, playW * 0.92);
+    const bx = L.shortLand ? playX + 128 : playX + (playW - bw) / 2;
+    ui.place("tutorial-banner", { anchor: "top-start", x: bx, y: top + (L.wide ? 10 : L.shortLand ? 6 : 52) }, () => {
       para(tr("Step {n} of {total}", { n: v.tutorial!.index + 1, total: v.tutorial!.total }).toUpperCase(), bw - 34, "step-count");
       para(tr(v.tutorial!.text), bw - 34, "body", "tutorial-text");
       button({ id: "btn-tutorial-quit", text: tr("Quit lesson"), style: ["btn", "btn-ghost", "btn-sm"], act: leaveMatch });
@@ -720,12 +725,12 @@ function chainStrip(L: Layout, px: number, top: number, pw: number, ph: number):
   void g;
 }
 
-function handTray(L: Layout, tw: number, th: number): ui.Rect {
+function handTray(_L: Layout, tw: number, th: number, width: number, anchor: "bottom-start" | "bottom-end"): ui.Rect {
   const v = view!;
   const g = game!;
   const sel = v.selectedTile;
   const handOwner = v.hotseat ? tr("{name}’s hand", { name: pn(v.myName) }) : tr("Your hand");
-  return ui.place("hand-tray", "bottom-start", () => {
+  return ui.place("hand-tray", anchor, () => {
     ui.style("hand-label").id("hand-label").label(`${handOwner.toUpperCase()} (${v.myHand.length})`);
     const tiles = (): void => {
       for (const id of v.myHand) {
@@ -745,9 +750,9 @@ function handTray(L: Layout, tw: number, th: number): ui.Rect {
       }
     };
     const total = v.myHand.length * (tw + 8);
-    if (total > L.lw - 20) ui.scrollArea("hand-scroll", { width: L.lw - 20, height: th + 14 }, () => ui.row("hand-list", tiles, { spacing: 8, align: "end" }), { padding: { top: 2, bottom: 2, start: 4, end: 4 } });
+    if (total > width - 20) ui.scrollArea("hand-scroll", { width: width - 20, height: th + 14 }, () => ui.row("hand-list", tiles, { spacing: 8, align: "end" }), { padding: { top: 2, bottom: 2, start: 4, end: 4 } });
     else ui.row("hand-list", tiles, { spacing: 8, align: "end", height: th + 14 });
-  }, { style: "hand-tray", width: L.lw, spacing: 4 });
+  }, { style: "hand-tray", width, spacing: 4 });
   void g;
 }
 

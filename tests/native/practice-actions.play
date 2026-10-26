@@ -27,7 +27,7 @@ click Top view
 frames 30
 save top-view
 click Toggle table panel
-until 60 Open ends
+until 60 Boneyard:
 frames 10
 save drawer
 click Close

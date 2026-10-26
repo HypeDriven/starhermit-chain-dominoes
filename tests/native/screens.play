@@ -69,6 +69,6 @@ click Pass & Play
 until 60 Play with friends
 frames 10
 click Pass-and-play
-until 200 Player 1’s hand
+until 200 ’s hand
 frames 30
 save hotseat
