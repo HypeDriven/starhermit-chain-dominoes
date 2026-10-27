@@ -2,7 +2,7 @@
 
 A café-tabletop dominoes game. Match the open ends of the chain, empty your
 hand, and keep your remaining pips low when the table locks up. A StarHermit
-engine script game (engine 1.16.2): one package, played natively by the
+engine script game (engine 1.16.3): one package, played natively by the
 StarHermit client and in browsers by the engine's web runtime. The 3D table
 is `starhermit:scene`; every screen, the HUD and the hand of domino tiles are
 `starhermit:ui` (the table is never the only way to play).
@@ -10,7 +10,7 @@ is `starhermit:scene`; every screen, the HUD and the hand of domino tiles are
 ## Run
 
 ```
-STARHERMIT=~/sh/runtime/1.16.2/starhermit-1.16.2-linux-x86_64/starhermit
+STARHERMIT=~/sh/runtime/1.16.3/starhermit-1.16.3-linux-x86_64/starhermit
 $STARHERMIT .              # play in a window
 $STARHERMIT check .        # validate and play 120 frames headless
 npm run package            # rewrite the web loader index.html + starhermit-files.json (after every change)
