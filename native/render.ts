@@ -4,7 +4,7 @@
 // mullions, the coffee cup with crema and rising steam, sugar cubes, the
 // ceramic dominoes (rounded, extruded, a canvas face per value pair with
 // drilled pips, a grooved divider and a brass spinner pin; clearcoat glaze
-// and normal-mapped pips when detailed), the chain as a serpentine, the
+// and bump-mapped pips when detailed), the chain as a serpentine, the
 // player's hand standing at the front, the opponents' face-down rows at
 // their edges, the boneyard stack, the end markers with their value labels,
 // the ghost preview and the selection ring. Tiles move on a critically
@@ -20,7 +20,7 @@ import {
   ACESFilmicToneMapping, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, Color, CylinderGeometry,
   DirectionalLight, ExtrudeGeometry, Fog, Group, HemisphereLight, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial,
   MeshLambertMaterial, MeshPhysicalMaterial, MeshStandardMaterial, PMREMGenerator, PerspectiveCamera, PlaneGeometry,
-  PointLight, Points, PointsMaterial, Raycaster, RepeatWrapping, RingGeometry, RoomEnvironment, SRGBColorSpace, Shape,
+  OrthographicCamera, PointLight, Points, PointsMaterial, Raycaster, RepeatWrapping, RingGeometry, RoomEnvironment, SRGBColorSpace, Shape,
   Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, pointerToNdc, renderer, scene,
   type Material, type Object3D, type Texture,
 } from "starhermit:scene";
@@ -87,31 +87,9 @@ function drawHalf(ctx: OffscreenCanvasRenderingContext2D, value: number, cx: num
   }
 }
 
-/** A grey height map as a tangent-space normal map (the browser build's bump maps). */
-function heightToNormal(src: OffscreenCanvas, strength: number, wrap: boolean): Texture {
-  const W = src.width, H = src.height;
-  const data = src.getContext("2d").getImageData(0, 0, W, H).data;
-  const out = new OffscreenCanvas(W, H);
-  const octx = out.getContext("2d");
-  const img = octx.createImageData(W, H);
-  const h = (x: number, y: number): number => {
-    if (wrap) { x = (x + W) % W; y = (y + H) % H; } else { x = Math.max(0, Math.min(W - 1, x)); y = Math.max(0, Math.min(H - 1, y)); }
-    return data[(y * W + x) * 4]! / 255;
-  };
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const dx = (h(x + 1, y) - h(x - 1, y)) * strength;
-      const dy = (h(x, y + 1) - h(x, y - 1)) * strength;
-      const len = Math.hypot(dx, dy, 1);
-      const i = (y * W + x) * 4;
-      img.data[i] = Math.round((-dx / len * 0.5 + 0.5) * 255);
-      img.data[i + 1] = Math.round((dy / len * 0.5 + 0.5) * 255);
-      img.data[i + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  octx.putImageData(img, 0, 0);
-  const tex = new CanvasTexture(out);
+/** A grey height canvas as a bump map (the page's CanvasTexture: no colour space). */
+function bumpTexture(src: OffscreenCanvas, wrap: boolean): Texture {
+  const tex = new CanvasTexture(src);
   if (wrap) tex.wrapS = tex.wrapT = RepeatWrapping;
   return tex;
 }
@@ -133,7 +111,8 @@ function tileFaceTexture(a: number, b: number, normal: boolean): Texture {
     ctx.beginPath(); ctx.moveTo(12 * k, S); ctx.lineTo(S - 12 * k, S); ctx.stroke();
     drawHalf(ctx, a, S / 2, S / 2, S * 0.72, "#000", true);
     drawHalf(ctx, b, S / 2, S * 1.5, S * 0.72, "#000", true);
-    const tex = heightToNormal(c, 2.5 * k, false);
+    const tex = bumpTexture(c, false);
+    tex.anisotropy = look?.detailed ? 8 : 4;
     faceCache.set(key, tex);
     return tex;
   }
@@ -173,8 +152,8 @@ function softDotTexture(): Texture {
   tex.colorSpace = SRGBColorSpace;
   return tex;
 }
-/** Grey fibre noise (the felt's and wood's bump in the browser build), as a normal map. */
-function noiseNormal(size: number, seedStart: number, dots: number, repeat: number, strength: number): Texture {
+/** Grey fibre noise (the felt's bump in the browser build). */
+function noiseTexture(size: number, seedStart: number, dots: number, repeat: number): Texture {
   const c = new OffscreenCanvas(size, size);
   const ctx = c.getContext("2d");
   ctx.fillStyle = "#808080"; ctx.fillRect(0, 0, size, size);
@@ -187,7 +166,7 @@ function noiseNormal(size: number, seedStart: number, dots: number, repeat: numb
     const x = rnd() * size, y = rnd() * size, a = rnd() * PI * 2, l = 1 + rnd() * 3;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
   }
-  const tex = heightToNormal(c, strength, true);
+  const tex = bumpTexture(c, true);
   tex.repeat.set(repeat, repeat);
   return tex;
 }
@@ -323,10 +302,14 @@ function tileGeometry(curve: number, bevel: number): BufferGeometry {
 // ---------------------------------------------------------------- lights
 const keyLight = new DirectionalLight(0xfff2dd, 1);
 keyLight.position.set(-18, 34, 18);
+{
+  const sc = keyLight.shadow.camera as OrthographicCamera;
+  sc.left = -31; sc.right = 31; sc.top = 27; sc.bottom = -27; sc.near = 10; sc.far = 90;
+  sc.updateProjectionMatrix();
+}
 keyLight.shadow.bias = -0.0004;
-keyLight.shadow.normalBias = 1;
+keyLight.shadow.normalBias = 0.03;
 keyLight.shadow.radius = 3;
-keyLight.shadow.distance = 140;
 const hemi = new HemisphereLight(0xcfe4ff, 0x3a2c1e, 1);
 const pendant = new PointLight(0xffffff, 1, 60, 1.8);
 pendant.position.set(10, 22, -10);
@@ -348,13 +331,13 @@ let ghost: Mesh | null = null;
 let selRing: Mesh | null = null;
 let glow = 1;
 
-interface LitParams { color?: number | Color; map?: Texture | null; normalMap?: Texture | null; roughness?: number; metalness?: number; clearcoat?: number; clearcoatRoughness?: number }
+interface LitParams { color?: number | Color; map?: Texture | null; bumpMap?: Texture | null; bumpScale?: number; roughness?: number; metalness?: number; clearcoat?: number; clearcoatRoughness?: number }
 /** Lit material for the level's budget: Lambert on Low, Standard on Balanced, Physical glaze (where `physical`) above. */
 function lit(p: LitParams, physical = false): Material {
   const kind = look?.budget.material ?? "standard";
-  const base = { color: p.color ?? 0xffffff, map: p.map ?? null };
+  const base = { color: p.color ?? 0xffffff, map: p.map ?? null, bumpMap: look?.detailed ? p.bumpMap ?? null : null, bumpScale: p.bumpScale ?? 1 };
   if (kind === "lambert") return new MeshLambertMaterial(base);
-  const std = { ...base, roughness: p.roughness ?? 1, metalness: p.metalness ?? 0, normalMap: look?.detailed ? p.normalMap ?? null : null };
+  const std = { ...base, roughness: p.roughness ?? 1, metalness: p.metalness ?? 0 };
   if (physical && kind === "physical") return new MeshPhysicalMaterial({ ...std, clearcoat: look?.detailed ? p.clearcoat ?? 0 : 0, clearcoatRoughness: p.clearcoatRoughness ?? 0 });
   return new MeshStandardMaterial(std);
 }
@@ -368,24 +351,24 @@ function build(): void {
   world = g;
   scene.add(g);
   const boost = t.lightBoost || 1;
-  // three.js intensities ÷ π (the engine's lights are physically based)
-  keyLight.intensity = keyBase = (2.2 * boost) / PI;
-  hemi.intensity = (0.55 * boost * (look.reflections ? 0.6 : 1)) / PI;
+  // the page's three r182 intensities (engine.minor 28 light units)
+  keyLight.intensity = keyBase = 2.2 * boost;
+  hemi.intensity = 0.55 * boost * (look.reflections ? 0.6 : 1);
   pendant.color.set(t.accent);
-  pendant.intensity = pendantBase = 12 / PI;
+  pendant.intensity = pendantBase = 12;
   renderer.toneMappingExposure = t.exposure || 1.05;
   scene.background = new Color(t.fog);
   (scene.fog as Fog).color.set(t.fog);
 
   // table
   const wood = woodCanvas();
-  const table = new Mesh(new BoxGeometry(FRAMING.tableSize, 2.4, FRAMING.tableSize), lit({ map: woodTexture(wood), normalMap: look.detailed ? (() => { const n = heightToNormal(wood, 1.2, true); n.repeat.set(2, 2); return n; })() : null, roughness: 0.62, metalness: 0.05 }));
+  const woodMap = woodTexture(wood);
+  const table = new Mesh(new BoxGeometry(FRAMING.tableSize, 2.4, FRAMING.tableSize), lit({ map: woodMap, bumpMap: woodMap, bumpScale: 1.2, roughness: 0.62, metalness: 0.05 }));
   table.position.y = -1.2;
   table.receiveShadow = true;
   g.add(table);
   // felt
-  const feltMat = lit({ map: feltTexture(), normalMap: look.detailed ? noiseNormal(256, 4242, 5000, 6, 1.6) : null, roughness: 0.95 });
-  if ("envMapIntensity" in feltMat) (feltMat as MeshStandardMaterial).envMapIntensity = 0.08 / ENV_INTENSITY;
+  const feltMat = lit({ map: feltTexture(), bumpMap: look.detailed ? noiseTexture(256, 4242, 5000, 6) : null, bumpScale: 1.6, roughness: 0.95 });
   const felt = new Mesh(new BoxGeometry(FRAMING.feltSize, 0.18, FRAMING.feltSize * 0.78), feltMat);
   felt.position.y = 0.09;
   felt.receiveShadow = true;
@@ -424,12 +407,14 @@ function build(): void {
   if (shadows) keyLight.shadow.mapSize = look.shadows;
   if (look.reflections) {
     if (!envTex) {
-      try { envTex = new PMREMGenerator().fromScene(new RoomEnvironment(), 0.04).texture; }
+      try { envTex = new PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), 0.04).texture; }
       catch (e) { console.warn("environment:", e instanceof Error ? e.message : String(e)); }
     }
     scene.environment = envTex;
     scene.environmentIntensity = ENV_INTENSITY;
   } else scene.environment = null;
+  // Felt barely reflects: its own, much weaker env map (as the page).
+  if (feltMat instanceof MeshStandardMaterial) { feltMat.envMap = look.reflections ? envTex : null; feltMat.envMapIntensity = 0.08; }
   glow = look.bloom ? 3.2 : 1;
   (selRing!.material as MeshBasicMaterial).color.set(t.accent).multiplyScalar(glow);
 
@@ -591,7 +576,8 @@ function setTileFace(e: Entry, a: number, b: number): void {
   const m = e.faceMat as MeshStandardMaterial;
   m.map = tileFaceTexture(a, b, false);
   m.color.set(0xffffff);
-  if (look!.detailed && "normalMap" in m) m.normalMap = tileFaceTexture(a, b, true);
+  m.bumpMap = look!.detailed ? tileFaceTexture(a, b, true) : null;
+  m.bumpScale = 2.5;
 }
 function removeTile(key: string): void {
   const e = tiles.get(key);
@@ -834,6 +820,7 @@ export function setPlayfield(x: number, y: number, w: number, h: number, W: numb
   if (Object.entries(next).every(([k, v]) => Math.abs(v - (view as Record<string, number>)[k]!) < 0.5)) return;
   view = next;
   camera.fov = view.w / view.h < 0.9 ? 54 : FRAMING.fov;
+  camera.aspect = view.w / view.h;
   camera.setViewOffset(view.w, view.h, -view.x, -view.y, view.W, view.H);
   camera.updateProjectionMatrix();
   fitCamera();
