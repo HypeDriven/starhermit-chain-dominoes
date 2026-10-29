@@ -7,7 +7,7 @@
     "assets/ui-style.json": {"sha256": "157508238fe092b723808a24780d42b4ade52cd56ab09c62035ba97a7278db89", "size": 16515},
     "cover.jpg": {"sha256": "5e2fea48fac162c031d30b1d59a66341272803ed5b6264fe8d26c3e94d18ab20", "size": 169614},
     "icon.png": {"sha256": "85d89a3d3ac64ea6121accfe9def5b08b13d35be83da60c5caaf028a913cca2a", "size": 7539},
-    "index.html": {"sha256": "1df937e020a8328dd915d0827137892573a753f402a24f268e622f36bc1065b2", "size": 1764},
+    "index.html": {"sha256": "6e1314c89db8c05e8c2b608d74201e3e9bebea10647b371132e64ce02faf7f67", "size": 1764},
     "js/ai.js": {"sha256": "d032867311b7131f83a88238edaa8650d9c48e50ebd50e352c610adb6a94136d", "size": 3462},
     "js/content.js": {"sha256": "6f43702981e278d8c091c5ab2549ea14f97c047d32173e7bb1d53b11275bb1c9", "size": 27069},
     "js/i18n.js": {"sha256": "0b8ffc2a6021a7bcdc589c77925ddb86edced22fa752bee4f26d69a2acfa0664", "size": 1624},
@@ -68,7 +68,7 @@
     "sfx/ui-modal-open.opus": {"sha256": "32dc52360640f14249c9f7fc98595c18c40a53d85c1a020083907bf42d65436b", "size": 10804},
     "sfx/ui-success.opus": {"sha256": "ec9d488e169e6611d8e996b7becc0da0390c5b71c6f8e7d686c2c0099c0ed736", "size": 43458},
     "sfx/ui-toggle.opus": {"sha256": "52680984ef7db74405f82a3c7181e68e1b66372bac969da0952a4e35fb4e2bb0", "size": 11465},
-    "starhermit.txt": {"sha256": "f24d806192da6728de7fcd43f4cef88dd13509f8640ab5a077158d3148a9f275", "size": 2199}
+    "starhermit.txt": {"sha256": "dbde2faa059f2897b87e39826f881cff9adf43f3fdc3bd48c1d60848771fc65f", "size": 2199}
   },
   "excluded": ["README.md", "coverart.png", "knownissues.md", "node_modules/", "package-lock.json", "package.json", "server.js", "spec.md", "tests/", "tools/", "tsconfig.json"],
   "format": 1
