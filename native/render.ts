@@ -404,7 +404,7 @@ function build(): void {
   const shadows = look.shadows > 0;
   renderer.shadowMap.enabled = shadows;
   keyLight.castShadow = shadows;
-  if (shadows) keyLight.shadow.mapSize = look.shadows;
+  if (shadows) keyLight.shadow.mapSize = look.shadows; // the level's size (since minor 23 the engine keeps the game's)
   if (look.reflections) {
     if (!envTex) {
       try { const envRoom = new RoomEnvironment(renderer); envRoom.position.y = 0; /* the page's three (pre-r183) builds the room at the origin */ envTex = new PMREMGenerator(renderer).fromScene(envRoom, 0.04).texture; }
@@ -841,13 +841,15 @@ export function applyLook(next: Look): void {
   const faceChanged = !look || look.budget.faceTexture !== next.budget.faceTexture;
   look = next;
   if (faceChanged) faceCache.clear();
-  renderer.ao = next.ao === "off" ? null : {
+  // The level's AO samples and resolution; full resolution is the engine's "high" (wider denoise).
+  const ao = next.ao, full = !!ao && ao.resolution >= 1;
+  renderer.ao = ao && {
     blendIntensity: 0.75, radius: 1.1, distanceExponent: 1.4, thickness: 1.2, scale: 1.0,
-    samples: next.ao === "high" ? 16 : 8,
-    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: next.ao === "high" ? 6 : 4, rings: 2, samples: next.ao === "high" ? 16 : 8, radiusExponent: 2 },
+    samples: ao.samples, resolution: ao.resolution,
+    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: full ? 6 : 4, rings: 2, samples: ao.denoiseSamples, radiusExponent: 2 },
   };
   // High threshold: only the window glow and the glowing markers bloom.
-  renderer.bloom = next.bloom ? { strength: 0.45, radius: 0.4, threshold: 1.0, resolution: next.budget.bloomRes } : null;
+  renderer.bloom = next.bloom === null ? null : { strength: 0.45, radius: 0.4, threshold: 1.0, resolution: next.bloom };
   // The browser build's grade pass, a ShaderPass before OutputPass (linear light):
   // S-curve 0.18, saturation 1.07, cool shadows / warm highlights, over-range light
   // kept (mix(c, s + max(c - 1, 0), amount)), the 0.2 vignette.

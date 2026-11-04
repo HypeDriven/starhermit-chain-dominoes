@@ -241,17 +241,19 @@ normal maps computed from the same height canvases. Detailed levels add the Room
 intensity 0.3, the felt 0.08), clearcoat glaze and the window-light shimmer; post effects are the renderer's
 (`renderer.ao`, `bloom` with the legal-end markers and selection ring boosted ×3.2 past the threshold, `grade` with the
 same S-curve, saturation, split toning and vignette, `antialias`). The graphics level is the runtime's (Options →
-Graphics: Auto from the hardware level, the level, render scale, frame-rate limit and readout); `native/quality.ts`
-maps its tier to the browser build's presets:
+Graphics: Auto from the hardware level, the level, render scale, frame-rate limit and readout). The engine-owned
+effects are the level's own (`levelSettings()`, the table every StarHermit game reads; the row below is each tier's
+anchor level: quantum, molecular, terrestrial, galactic); `native/quality.ts` maps the level's tier to the browser
+build's art presets:
 
 | Budget | Low | Balanced | High | Ultra |
 |---|---|---|---|---|
-| Shadows / AO / bloom / grade / AA | off / off / off / off / off | 1024 / off / on / on / FXAA | 2048 / on / on / on / SMAA | 4096 / high / on / on / MSAA |
+| Shadows / AO / bloom / grade / AA (the level's) | off / off / off / off / off | 1024 / off / ½ / on / FXAA | 2048 / ½ res, 8 samples / ½ / on / SMAA | 4096 / full res, 16 samples / full / on / MSAA |
 | Reflections, detail, shimmer | off | on | on | on |
 | Materials (table, felt, band, wall, cup, tiles) | Lambert | Standard | Physical (clearcoat glaze) | Physical |
 | Tile-face texture | 128×256 | 256×512 | 256×512 | 512×1024 |
 | Tile corner curve / bevel segments | 3 / 1 | 6 / 2 | 8 / 3 | 12 / 4 |
-| Steam points (× 1.64 per level above the tier's first, ≤ 4×; cap 24 low tiers, 480 high) | 16 | 24 | 120 | 200 |
+| Steam points (× the level's particle budget over the anchor's, ≤ 4×; cap 24 low tiers, 480 high) | 16 | 24 | 120 | 200 |
 
 The 3D table draws only in a match (`renderer.camera` is cleared on the menus, which sit on their radial-gradient
 backdrop and the title's key art).

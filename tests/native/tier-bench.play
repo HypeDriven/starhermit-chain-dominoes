@@ -1,0 +1,37 @@
+# Tier bench (tools/engine-tier-bench.mjs): journey stage 1 (First Table,
+# seeded), the first three turns of tests/native/journey-match.play (tools/
+# gen-play.mjs) measured: tiles played, the AI's turns, the café table.
+until 300 Chain Dominoes
+frames 20
+click Journey
+until 60 Forty tables
+frames 10
+click First Table
+until 200 YOUR HAND
+frames 30
+until 300 Your turn
+frames 120
+measure start
+frames 10
+click 0 | 3 domino
+frames 8
+click Play selected tile on right end
+frames 30
+frames 87
+until 300 Your turn
+frames 10
+click 3 | 4 domino
+frames 8
+click Play selected tile on right end
+frames 30
+frames 76
+until 300 Your turn
+frames 10
+click 1 | 4 domino
+frames 8
+click Play selected tile on right end
+frames 30
+frames 76
+until 300 Your turn
+frames 200
+measure stop

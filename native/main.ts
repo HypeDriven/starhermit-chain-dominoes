@@ -18,7 +18,7 @@
 // and the match clock count them, so pauses, a hidden window and slow
 // frames never cost time and play scripts replay exactly.
 import "./classic.ts";
-import { frame, onFixedUpdate, onQuit, onRender, onResume, onStart, onSuspend, onUpdate, onPreferencesChange, preferences, setFixedRate, clipboard } from "starhermit:engine";
+import { frame, levelSettings, onFixedUpdate, onQuit, onRender, onResume, onStart, onSuspend, onUpdate, onPreferencesChange, preferences, setFixedRate, clipboard } from "starhermit:engine";
 import { onAction, onPointerButton, onPointerMove, onTouch, vibrate } from "starhermit:input";
 import * as ui from "starhermit:ui";
 import { onSessionEnded, onPlayerChange, requestSignIn } from "starhermit:platform";
@@ -592,10 +592,10 @@ onTouch((e) => {
 let lookKey = "";
 function applyLook(): void {
   const f = frame();
-  const key = `${f.quality}:${f.levelIndex}`;
+  const key = f.level;
   if (key === lookKey) return;
   lookKey = key;
-  render.applyLook(lookFor(f.quality, f.levelIndex));
+  render.applyLook(lookFor(levelSettings(f.level)));
 }
 function applyThemeNow(): void {
   const t = C.themeById(settings.theme);
