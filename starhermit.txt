@@ -18,6 +18,7 @@ engine.api=1
 engine.entry=native/main.ts
 engine.version=1.36.1
 engine.minor=32
+engine.limits.image_mib=256
 engine.capabilities=platform,storage,clipboard
 
 # Keyboard controls (players rebind keys and pads in the runtime's Options).

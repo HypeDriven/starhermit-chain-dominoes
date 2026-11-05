@@ -833,13 +833,16 @@ export function setActive(on: boolean): void { renderer.camera = on ? camera : n
 export function setTheme(next: Theme): void {
   if (theme && theme.id === next.id) return;
   theme = next;
+  const staleFaces = [...faceCache.values()];
   faceCache.clear();
   build();
+  for (const tex of staleFaces) tex.dispose(); // build() replaced the tiles that used them
 }
 export function applyLook(next: Look): void {
   if (look && JSON.stringify(look) === JSON.stringify(next)) return;
   const faceChanged = !look || look.budget.faceTexture !== next.budget.faceTexture;
   look = next;
+  const staleFaces = faceChanged ? [...faceCache.values()] : [];
   if (faceChanged) faceCache.clear();
   // The level's AO samples and resolution; full resolution is the engine's "high" (wider denoise).
   const ao = next.ao, full = !!ao && ao.resolution >= 1;
@@ -860,6 +863,7 @@ export function applyLook(next: Look): void {
   } : null;
   renderer.antialias = next.antialias;
   build();
+  for (const tex of staleFaces) tex.dispose(); // build() replaced the tiles that used them
 }
 export function setReducedMotion(on: boolean): void {
   reducedMotion = on;
