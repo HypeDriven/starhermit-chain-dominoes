@@ -28,7 +28,7 @@ import {
 } from "./classic.ts";
 import * as audio from "./audio.ts";
 import { sfx } from "./audio.ts";
-import { tr, N, pn, pt, onLocaleChange } from "./i18n.ts";
+import { tr, N, pn, onLocaleChange } from "./i18n.ts";
 import * as platform from "./platform.ts";
 import { lookFor } from "./quality.ts";
 import * as render from "./render.ts";
@@ -38,7 +38,6 @@ import { applyTheme, initStyles } from "./style.ts";
 export type ScreenName = "title" | "learn" | "journey" | "setup" | "game" | "profile" | "settings" | "help";
 export type OverlayName = "pause" | "round" | "results" | "drawer" | "erase";
 export type SetupKind = "practice" | "daily" | "challenges" | "hosted";
-export interface Toast { text: () => string; until: number }
 
 const STEP_MS = 1000 / 60;
 export const app = {
@@ -55,8 +54,7 @@ export const app = {
   round: null as RoundResult | null,
   results: null as Results | null,
   lessonDone: null as Tutorial | null,
-  lb: null as { state: "lbPosting" | "lbRank" | "lbPosted" | "lbNotPosted"; rank?: number | null } | null,
-  toast: null as Toast | null,
+  lb: null as { state: "leaderboardPosting" | "leaderboardRank" | "leaderboardPosted" | "leaderboardNotPosted"; rank?: number | null } | null,
   caption: null as { text: string; until: number } | null,
   clockMs: null as number | null,
   hintTile: null as { id: number; until: number } | null,
@@ -93,12 +91,18 @@ export function contentGoal(c: Content | null): string {
 export function announce(text: string, kind: "status" | "error" = "status"): void {
   if (text) ui.announce(text.slice(0, 500), { politeness: kind === "error" ? "assertive" : "polite" });
 }
-/** A toast (3.2 s); `text` re-reads in the current language. */
-export function toast(text: () => string): void {
-  app.toast = { text, until: now() + 3.2 };
+/** A toast (3.2 s), one at a time: over the table it stands clear of the hand and the HUD. */
+let shownToast: ui.Toast | null = null;
+export function toast(text: string): void {
+  shownToast?.dismiss();
+  const v = ui.viewport!();
+  const shortLand = v.width > v.height && v.height <= 500;
+  const offset = app.screen === "game" ? (!shortLand && v.width <= 600 ? 194 : 124) : 4; // the old distance from the edge − the stack's 16
+  shownToast = ui.toast!(text, { duration: 3.2, style: "toast", dismissible: false, offset });
   sfx.toast();
-  announce(text());
 }
+/** Whether a toast is up (the caption strip stands above it). */
+export function toastUp(): boolean { return !!shownToast?.queued; }
 function haptic(ms: number): void { if (settings.haptics) vibrate(ms); }
 export function fmtTime(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -296,7 +300,7 @@ function onSessionEvent(name: string, payload: unknown): void {
   if (name === "round-end") showRoundOverlay(payload as RoundResult);
   else if (name === "results") showResults(payload as Results);
   else if (name === "invalid") haptic(140);
-  else if (name === "achievement") { const a = payload as Achievement; sfx.success(); toast(() => tr("Achievement: {name} — {desc}", { name: tr(a.name), desc: tr(a.desc) })); }
+  else if (name === "achievement") { const a = payload as Achievement; sfx.success(); toast(tr("Achievement: {name} — {desc}", { name: tr(a.name), desc: tr(a.desc) })); }
   else if (name === "tutorial-complete") showTutorialComplete(payload as Tutorial);
   else if (name === "hint") {
     const m = payload as Cmd;
@@ -408,7 +412,7 @@ function showResults(res: Results): void {
   for (let i = 0; i < res.stars; i++) sfx.star(0.4 + i * 0.35);
   postToLeaderboard(res);
   openOverlay("results");
-  if (res.unlocked.length) { sfx.success(); toast(() => tr("Achievement unlocked: {name}", { name: tr(res.unlocked[0]!.name) })); }
+  if (res.unlocked.length) { sfx.success(); toast(tr("Achievement unlocked: {name}", { name: tr(res.unlocked[0]!.name) })); }
 }
 function showTutorialComplete(def: Tutorial): void {
   app.lessonDone = def;
@@ -421,11 +425,11 @@ function postToLeaderboard(res: Results): void {
   const mode = game?.mode;
   app.lb = null;
   if (!platform.signedIn() || !(mode === "daily" || mode === "challenge" || mode === "journey") || !res.entry) return;
-  const line = { state: "lbPosting" as const };
+  const line = { state: "leaderboardPosting" as const };
   app.lb = line;
   void platform.postLeaderboard(res.entry.score).then((r) => {
     if (app.lb !== line) return;
-    app.lb = { state: !r.posted ? "lbNotPosted" : r.rank ? "lbRank" : "lbPosted", rank: r.rank };
+    app.lb = { state: !r.posted ? "leaderboardNotPosted" : r.rank ? "leaderboardRank" : "leaderboardPosted", rank: r.rank };
   });
 }
 
@@ -457,7 +461,7 @@ export function saveName(name: string): void {
   if (!v) return;
   platform.setGuestName(v);
   announce(tr("Name saved."));
-  toast(() => tr("Name saved: {name}", { name: v }));
+  toast(tr("Name saved: {name}", { name: v }));
 }
 export function replayTutorials(): void {
   progress().tutorials = [];
@@ -479,7 +483,7 @@ export async function copyInvite(): Promise<boolean> {
   const link = platform.inviteLink();
   let ok = false;
   if (link) { try { clipboard.writeText(link); ok = true; } catch { ok = false; } }
-  toast(() => (ok ? pt("inviteCopied") : pt("inviteFailed")));
+  toast(tr(ok ? "starhermit.inviteCopied" : "starhermit.inviteFailed"));
   return ok;
 }
 export function signIn(): void { void requestSignIn().catch(() => undefined); }
@@ -497,7 +501,7 @@ export async function matchmake(): Promise<void> {
       if (st && st.matched) {
         app.matchmaking = false;
         announce(tr("Match found."));
-        toast(() => tr("Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable."));
+        toast(tr("Match found — hosted tables need the realtime play update; AI and pass-and-play tables are fully playable."));
         try { await platform.matchmakingLeave(); } catch { /* gone */ }
       } else if (st && st.status !== "queued") {
         app.matchmaking = false;
@@ -617,7 +621,7 @@ onStart(() => {
 onPreferencesChange((p) => render.setReducedMotion(p.reducedMotion));
 platform.onSettingsChange(() => { applyThemeNow(); if (game) game._emitView(); });
 onLocaleChange(() => { if (app.screen === "profile") refreshBoard(); });
-onSessionEnded(() => { app.signedOut = true; toast(() => pt("signedOut")); });
+onSessionEnded(() => { app.signedOut = true; toast(tr("starhermit.signedOut")); });
 onPlayerChange((p) => { if (p) app.signedOut = false; });
 onSuspend(() => {
   // A hidden window pauses the match (the browser build's visibilitychange).
@@ -653,7 +657,6 @@ onUpdate((dt) => {
   applyLook();
   audio.update();
   const t0 = now();
-  if (app.toast && app.toast.until < t0) app.toast = null;
   if (app.caption && t0 > app.caption.until) app.caption = null;
   if (app.hintTile && t0 > app.hintTile.until) app.hintTile = null;
 });

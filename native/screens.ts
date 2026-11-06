@@ -19,14 +19,14 @@ import * as draw from "starhermit:draw";
 import * as ui from "starhermit:ui";
 import { TextureLoader, type Texture } from "starhermit:scene";
 import { Content as C, ProgressLib as P, type Stage } from "./classic.ts";
-import { tr, N, pn, pt } from "./i18n.ts";
+import { tr, N, pn } from "./i18n.ts";
 import * as platform from "./platform.ts";
 import * as render from "./render.ts";
 import {
   app, back, commitToEnd, contentGoal, contentName, continueSaved, copyInvite, doAction, eraseProgress, fmtTime, game, hint,
   leaveMatch, matchmake, nav, nextLesson, nextRound, nextStage, onPick, openOverlay, openSetup, closeOverlay, pauseGame,
   progress, quickPlay, replayTutorials, resumeGame, retry, saveName, savedMatch, setBoardTab, settings, signIn,
-  skip, startChallenge, startDaily, startJourneyStage, startHotseat, startPractice, startTutorial, today, toggleView, toTitle, undo, view,
+  skip, startChallenge, startDaily, startJourneyStage, startHotseat, startPractice, startTutorial, today, toastUp, toggleView, toTitle, undo, view,
 } from "./main.ts";
 import { currentPalette, mix } from "./style.ts";
 
@@ -34,13 +34,12 @@ import { currentPalette, mix } from "./style.ts";
 interface Layout { lw: number; lh: number; sc: number; ox: number; oy: number; W: number; H: number; wide: boolean; compact: boolean; phone: boolean; shortLand: boolean }
 function layoutNow(): Layout {
   const f = frame();
-  const sc = ui.preferences().scale;
-  const sa = f.safeArea;
-  const lw = Math.max(1, (f.width - sa.left - sa.right) / sc), lh = Math.max(1, (f.height - sa.top - sa.bottom) / sc);
+  const v = ui.viewport!();
+  const sc = v.scale, lw = Math.max(1, v.width), lh = Math.max(1, v.height);
   const shortLand = lw > lh && lh <= 500;
   const wide = !shortLand && lw >= 1024;
   const phone = !shortLand && lw <= 600;
-  return { lw, lh, sc, ox: sa.left / sc, oy: sa.top / sc, W: f.width / sc, H: f.height / sc, wide, compact: !wide && !phone && !shortLand, phone, shortLand };
+  return { lw, lh, sc, ox: v.x, oy: v.y, W: f.width / sc, H: f.height / sc, wide, compact: !wide && !phone && !shortLand, phone, shortLand };
 }
 const lastHeight = new Map<string, number>();
 
@@ -238,7 +237,7 @@ export function drawScreens(): void {
     }
   }
   overlays(L);
-  toasts(L, playing);
+  captionStrip(L, playing);
   if (app.focusNext) {
     const age = f.frame - app.openedFrame;
     if (age >= 1) ui.setFocus(app.focusNext);
@@ -340,13 +339,13 @@ function titleScreen(L: Layout): void {
       { id: "btn-help", text: tr("How to Play"), style: ["btn", "btn-ghost"], act: () => nav("help") },
     ], Math.min(w, 520), "center", 6);
     const plat: Btn[] = [];
-    if (platform.inviteLink()) plat.push({ id: "btn-invite", text: pt("invite"), style: ["btn", "btn-ghost"], act: () => void copyInvite() });
-    if (!platform.signedIn()) plat.push({ id: "btn-signin", text: pt("signIn"), act: signIn });
+    if (platform.inviteLink()) plat.push({ id: "btn-invite", text: tr("starhermit.invite"), style: ["btn", "btn-ghost"], act: () => void copyInvite() });
+    if (!platform.signedIn()) plat.push({ id: "btn-signin", text: tr("starhermit.signIn"), act: signIn });
     if (plat.length) flow("title-platform", plat, Math.min(w, 520), "center", 6);
     const status = platform.signedIn() ? tr("Connected to StarHermit · cloud saves on") : tr("Offline mode · progress stays on this device");
     para(status, w, "host-status", "host-status", true);
-    if (platform.signedIn()) para(pt("signedInAs", { name: platform.displayName() }), w, "host-status", "title-signed-in", true);
-    else if (app.signedOut) para(pt("signedOut"), w, "host-status", "title-signed-out", true);
+    if (platform.signedIn()) para(tr("starhermit.signedInAs", { name: platform.displayName() }), w, "host-status", "title-signed-in", true);
+    else if (app.signedOut) para(tr("starhermit.signedOut"), w, "host-status", "title-signed-out", true);
   }, true);
 }
 
@@ -495,7 +494,7 @@ function setupScreen(L: Layout): void {
           ? tr("Create a private invitation or join public matchmaking. Hosted sessions are authoritative: the server validates every move.")
           : tr("Hosted play needs the StarHermit shell. Offline, you can still pass-and-play or face the AI."), pw, "body");
         if (hosted) {
-          button({ id: "btn-host-invite", text: pt("invite"), act: () => void copyInvite() });
+          button({ id: "btn-host-invite", text: tr("starhermit.invite"), act: () => void copyInvite() });
           button({ id: "btn-host-match", text: tr("Find public match"), disabled: app.matchmaking, act: () => void matchmake() });
         }
         button({ id: "btn-hotseat", text: tr("Pass-and-play (2 humans, this device)"), act: startHotseat }, pw);
@@ -1032,7 +1031,7 @@ function resultsOverlay(L: Layout): void {
     for (const a of res.unlocked) {
       ui.row(`unlock-${a.key}`, () => { glyph("trophy", 16, pal.accent); para(tr(a.name) + " — " + tr(a.desc), w - 54, "body"); }, { style: "unlock-chip", width: w, spacing: 8, align: "center" });
     }
-    if (app.lb) para(app.lb.state === "lbRank" ? pt("lbRank", { rank: app.lb.rank ?? "" }) : pt(app.lb.state), w, "muted", "results-lb");
+    if (app.lb) para(tr(`starhermit.${app.lb.state}`, app.lb.state === "leaderboardRank" ? { rank: app.lb.rank ?? "" } : null), w, "muted", "results-lb");
     const reasons: Record<string, string> = { "target-reached": N("Target score reached"), "rounds-exhausted": N("Round limit reached"), "move-limit": N("Move limit reached"), "time-expired": N("Time expired") };
     para(tr(reasons[t.reason] ?? t.reason) + " · " + tr("{n} rounds", { n: t.rounds }) + " · " + fmtTime(res.elapsedMs) + " · " + tr("seed {seed}", { seed: res.replay.seed }), w, "muted", "results-meta");
     const btns: Btn[] = [{ id: "btn-results-retry", text: tr(g.mode === "tutorial" ? N("Next lesson") : N("Play again")), style: ["btn", "btn-primary"], act: retry }];
@@ -1043,22 +1042,14 @@ function resultsOverlay(L: Layout): void {
   });
 }
 
-// ------------------------------------------------------------------ toast and captions
-function toasts(L: Layout, playing: boolean): void {
+// ------------------------------------------------------------------ captions
+function captionStrip(L: Layout, playing: boolean): void {
   const bottom = playing ? (L.phone ? 210 : 140) : 20;
   if (app.caption) {
     const text = tr(app.caption.text);
-    ui.place("captions", { anchor: "bottom", y: bottom + (app.toast ? 56 : 0) + 4 }, () => {
+    ui.place("captions", { anchor: "bottom", y: bottom + (toastUp() ? 56 : 0) + 4 }, () => {
       ui.row("caption-row", () => { glyph("note", 12, currentPalette().text); ui.style("captions", { padding: 0, background: "#00000000" }).id("caption-text").label(text); }, { spacing: 4, align: "center" });
     }, { style: "captions" });
   }
-  if (!app.toast) return;
-  const text = app.toast.text();
-  const w = Math.min(L.lw - 32, 560);
-  ui.place("toast", { anchor: "bottom", y: bottom }, () => {
-    const fits = textWidth(text, "toast") + 50 <= w;
-    if (fits) ui.style("toast").id("toast").label(text);
-    else ui.style("toast").id("toast").paragraph(text, w - 44);
-  }, { width: w, align: "center" });
 }
 

@@ -16,12 +16,13 @@
 // The camera frames the table into the play area the HUD leaves
 // (setViewOffset), pulled back until the hand arc and the chain area fit, as
 // the browser build fit them into its canvas.
+import { createRandom } from "starhermit:engine";
 import {
   ACESFilmicToneMapping, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, Color, CylinderGeometry,
   DirectionalLight, ExtrudeGeometry, Fog, Group, HemisphereLight, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial,
   MeshLambertMaterial, MeshPhysicalMaterial, MeshStandardMaterial, PMREMGenerator, PerspectiveCamera, PlaneGeometry,
   OrthographicCamera, PointLight, Points, PointsMaterial, Raycaster, RepeatWrapping, RingGeometry, RoomEnvironment, SRGBColorSpace, Shape,
-  Sprite, SpriteMaterial, TorusGeometry, Vector2, Vector3, pointerToNdc, renderer, scene,
+  TextLabel, TorusGeometry, Vector2, Vector3, pointerToNdc, renderer, scene,
   type Material, type Object3D, type Texture,
 } from "starhermit:scene";
 import { OffscreenCanvas, type OffscreenCanvasRenderingContext2D } from "starhermit:canvas";
@@ -50,12 +51,8 @@ function seededRng(label: string): () => number {
   let s = 2166136261;
   const str = (theme ? theme.id : "x") + ":" + label;
   for (let i = 0; i < str.length; i++) { s ^= str.charCodeAt(i); s = Math.imul(s, 16777619); }
-  return () => {
-    s |= 0; s = (s + 0x6D2B79F5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  const r = createRandom(s, { algorithm: "mulberry32" });
+  return () => r.float();
 }
 
 // ---------------------------------------------------------------- canvas textures
@@ -243,21 +240,6 @@ function feltTexture(): Texture {
   tex.colorSpace = SRGBColorSpace;
   return tex;
 }
-const labelCache = new Map<string, Texture>();
-function labelTexture(text: string): Texture {
-  const hit = labelCache.get(text);
-  if (hit) return hit;
-  const c = new OffscreenCanvas(128, 128);
-  const ctx = c.getContext("2d");
-  ctx.font = "bold 84px sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(text, 64, 70);
-  const tex = new CanvasTexture(c);
-  tex.colorSpace = SRGBColorSpace;
-  labelCache.set(text, tex);
-  return tex;
-}
 
 // ---------------------------------------------------------------- tile geometry
 function roundedRectShape(w: number, l: number, r: number): Shape {
@@ -326,7 +308,7 @@ let steamCount = 0;
 let dotTex: Texture | null = null;
 const CUP = { x: -22.5, z: -9 };
 let endMarkers: Record<"left" | "right", Mesh> | null = null;
-let endLabels: Record<"left" | "right", Sprite> | null = null;
+let endLabels: Record<"left" | "right", TextLabel> | null = null;
 let ghost: Mesh | null = null;
 let selRing: Mesh | null = null;
 let glow = 1;
@@ -524,9 +506,9 @@ function buildMarkers(g: Group): void {
     return ring;
   };
   endMarkers = { left: mk(), right: mk() };
-  const lbl = (): Sprite => {
-    const sp = new Sprite(new SpriteMaterial({ map: labelTexture("0"), transparent: true, depthTest: false }));
-    sp.scale.set(2.4, 2.4, 1);
+  if (endLabels) { endLabels.left.dispose(); endLabels.right.dispose(); }
+  const lbl = (): TextLabel => {
+    const sp = new TextLabel("0", { size: 1.575, weight: "bold", depthTest: false, resolution: 84, anchor: [0.5, 0.56] });
     sp.visible = false;
     g.add(sp);
     return sp;
@@ -680,7 +662,7 @@ function syncMarkers(view: View): void {
     if (lbl.visible) {
       const p = endPos[end]!;
       lbl.position.set(p[0], 2.2, p[2]);
-      (lbl.material as SpriteMaterial).map = labelTexture(String(val));
+      lbl.text = String(val);
     }
   }
   syncGhost(view);

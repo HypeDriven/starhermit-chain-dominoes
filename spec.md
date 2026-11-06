@@ -37,7 +37,7 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | `js/ai.js` | `chooseMove(state, seat, difficulty, rng)`: easy / medium / hard, seeded |
 | `js/session.js` | `Session`: one match; commands, AI scheduling (on the client's timers), clock (`advanceClock`), undo, hints, lesson step engine, replay envelope, progression, achievements |
 | `js/progress.js` | Save document (`normalize`, `mergeDocs`, `fromBrowserSave`), the game's settings and their checks, achievements, the device's local board |
-| `js/strings.js`, `js/i18n.js`, `js/platform-strings.js` | Translation tables (`CDM_STRINGS`), the localizer (`CDMI18N`), account lines |
+| `assets/strings.json` | Translation tables (the engine's `strings`; account lines are its `starhermit.*` keys) |
 | `score-script.js` | StarHermit platform script: range-checks a finished match score and posts it to the `high-score` leaderboard |
 | `server.js` | Authoritative hosted-play Game Script (tested in Node; not packaged, not the deployed script) |
 | `sfx/` | 39 Opus clips; `manifest.txt` (canonical binding), `manifest.json` (generator input), `manifest.md` (generated) |
@@ -270,7 +270,7 @@ Tiles, felt, wood, cup and steam stay procedural so every theme recolours them w
 ## 9. Audio direction
 
 Mix: effects carry the information (every logical event has one short ceramic or wooden transient), ambience is a
-low-passed brown-noise café room tone (rendered once into a 4 s cross-faded loop, 0.16), music is a four-chord sine
+low-passed brown-noise café room tone (rendered once offline into a seamless 4 s loop, rms 0.03), music is a four-chord sine
 pad (C, Am, F, G every 3.4 s, rendered clips) while a match is on; both rest while paused. Sounds play on the runtime's
 buses — music → `music`, effects and ambience → `effects`, menu cues (hover, modal, tabs, toasts, ticks) →
 `interface` — whose volumes, mute and voice limit are the runtime's Options; the old bus levels (music 0.5, effects
@@ -316,15 +316,15 @@ The table below is the source of `sfx/manifest.txt`. Event ids are the `sfx` met
 
 Nine locales ship: **en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR, it-IT**.
 
-- **Strings.** English text is the key; `js/strings.js` holds one row per key with es-419, de-DE, fr-FR, pt-BR and
-  it-IT; en-GB, es-ES and fr-CA list only their differences. `tr()` falls back regional → parent → English and fills
+- **Strings.** English text is the key; `assets/strings.json` holds one table per locale, es-419, de-DE, fr-FR, pt-BR and
+  it-IT in full; en-GB, es-ES and fr-CA list only their differences. `tr()` falls back regional → parent → English and fills
   `{name}` placeholders; every string is looked up each frame, so a language change shows at once (the match in play
   is untouched). Content names, goals, lesson steps and outros translate at display time; daily names and goals are
   built per locale. Seat names ("You", "Guide", "Player 1/2") translate; opponents' names, "Chain Dominoes" and
-  "StarHermit" do not. Account lines come from `js/platform-strings.js`.
+  "StarHermit" do not. Account lines are the engine's `starhermit.*` strings.
 - **Language.** The runtime's interface language (`preferences().language`: the player's choice in Options →
   Language, else the account's preferred language, else the device's), mapped to the nearest shipped locale
-  (`native/i18n.ts pickLocale`: en-GB/es-ES/fr-CA by region). The game has no language menu of its own.
+  (the engine's locale chain; a bare `es` now reads es-ES, en-PH and en-SG read en-GB). The game has no language menu of its own.
 - `tests/i18n.test.mjs` collects every key from `native/*.ts` (`tr()`, `N()`, captions), the session and the content,
   and fails when a locale lacks one, drops a placeholder, or keeps a key nothing shows. Layouts tolerate longer text:
   labels wrap into paragraphs, the objective ellipsises, screens and overlays scroll.
@@ -359,7 +359,7 @@ reports and the account dialog; the game uses `starhermit:platform` and `starher
 | Settings | Yes | The game's own settings (theme, numbers on tiles, colour-vision palette, left-handed, hold to confirm, timing assistance, haptics, hints, undo) are `settings` keys synced with the account; the browser build's per-player keys are migrated then removed |
 | Controls | Yes | 14 actions in `starhermit.txt` (`control.*`, `engine.gamepad.*`), rebound in Options |
 | Invite link | Yes | Signed in: **Invite a friend** on the title and Hosted Play copies `inviteLink()` to the clipboard |
-| Leaderboards | Yes | `high-score`: signed in, every finished ranked match (Journey, Daily, Challenge) posts its score through `score-script.js` (a practice session's game socket, `{ type: 'result', scores }`); the results show posting / rank. Profile → Global / Daily reads the board's top 20 (guests too, once the board id is known) |
+| Leaderboards | Yes | `high-score`: signed in, every finished ranked match (Journey, Daily, Challenge) posts its score through `score-script.js` (`leaderboards.submitScore`); the results show posting / rank. Profile → Global / Daily reads the board's top 20 (guests too, once the board id is known) |
 | Matchmaking | Lobby only | "Find public match" joins the game's queues, polls the ticket every 3 s and cancels it on a match, saying hosted tables need the realtime play update |
 | Server time | Yes | `serverNow()` dates the daily table (device UTC date offline) |
 | Achievements | Local | Seven keys in the save document |
@@ -367,7 +367,7 @@ reports and the account dialog; the game uses `starhermit:platform` and `starher
 
 ## 13. Technical architecture
 
-- **Boot.** `native/main.ts` imports `classic.ts` (a `localStorage` shim over device storage, then the `js/*.js`
+- **Boot.** `native/main.ts` imports `classic.ts` (the engine's `localStorage` over device storage, then the `js/*.js`
   scripts via `loadClassic`), registers styles, reads the save and settings, applies the theme and the graphics
   level, and shows the title.
 - **Data flow.** Input → `main.ts` → `Session.act(cmd, actionId)` → `rules.applyCommand` → `Session.buildView()` →

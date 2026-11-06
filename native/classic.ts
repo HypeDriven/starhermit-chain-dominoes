@@ -1,28 +1,16 @@
 // The browser build's pure game scripts, shared with the Node tests: rules,
 // content, AI, the session controller, progress (achievements, the local
-// board, the save document) and the string tables (js/*.js, UMD), evaluated
-// as classic scripts so their globals are this module's exports.
+// board, the save document) (js/*.js, UMD), evaluated as classic scripts so their globals are this module's exports.
 //
 // js/progress.js keeps the device's local board in `localStorage`: here that
-// is a small shim over the device's starhermit:storage, installed before the
+// is the engine's, over the device's starhermit:storage, installed before the
 // scripts run. Progress itself is the game's save (platform.ts).
-import { storage } from "starhermit:storage";
+import { installLocalStorage } from "starhermit:storage";
 import { loadClassic } from "starhermit:script";
 
-const shim = {
-  getItem(key: string): string | null {
-    try { return storage.getText(key); } catch { return null; }
-  },
-  setItem(key: string, value: string): void {
-    try { storage.set(key, String(value)); } catch (e) { console.warn(`storage ${key}: ${String(e)}`); }
-  },
-  removeItem(key: string): void {
-    try { storage.remove(key); } catch { /* gone */ }
-  },
-};
-(globalThis as unknown as { localStorage: typeof shim }).localStorage = shim;
+installLocalStorage();
 
-for (const f of ["js/rules.js", "js/content.js", "js/ai.js", "js/progress.js", "js/session.js", "js/strings.js", "js/i18n.js", "js/platform-strings.js"]) loadClassic(f);
+for (const f of ["js/rules.js", "js/content.js", "js/ai.js", "js/progress.js", "js/session.js"]) loadClassic(f);
 
 // -- The shapes this client reads -------------------------------------------------
 export type DrawRule = "until-playable" | "one" | "none";
@@ -144,24 +132,12 @@ interface ProgressApi {
   ACHIEVEMENTS: Achievement[];
   localBoard(): BoardEntry[];
 }
-interface I18nApi {
-  T(key: string, vars?: Record<string, string | number> | null): string;
-  setLocale(tag: string): string;
-  readonly lang: string;
-  locales: string[];
-}
-interface PlatformStringsApi {
-  platformStrings(lang: string): Record<string, string>;
-  fmtPlatform(s: string, vars?: Record<string, string | number>): string;
-}
 
 const g = globalThis as unknown as {
   ChainDominoesRules: RulesApi; ChainDominoesContent: ContentApi; ChainDominoesProgress: ProgressApi;
-  ChainDominoesSession: { Session: SessionCtor }; CDMI18N: I18nApi; PlatformStrings: PlatformStringsApi;
+  ChainDominoesSession: { Session: SessionCtor };
 };
 export const Rules = g.ChainDominoesRules;
 export const Content = g.ChainDominoesContent;
 export const ProgressLib = g.ChainDominoesProgress;
 export const Session = g.ChainDominoesSession.Session;
-export const I18n = g.CDMI18N;
-export const PlatformStrings = g.PlatformStrings;

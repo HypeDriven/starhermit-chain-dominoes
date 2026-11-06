@@ -15,7 +15,7 @@
   'use strict';
 
   const BUILD_VERSION = '1.0.0';
-  /** Localized text (js/i18n.js; identity in node tests). English source strings are the keys. */
+  /** Localized text (native/i18n.ts; identity in node tests). English source strings are the keys. */
   const tr = (key, vars) => {
     if (globalThis.CDMI18N) return globalThis.CDMI18N.T(key, vars);
     return vars ? String(key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)) : key;

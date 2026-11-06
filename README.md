@@ -30,7 +30,7 @@ npm run package            # rewrite the web loader index.html + starhermit-file
 | `js/ai.js` | Practice AI: easy / medium / hard, seeded |
 | `js/session.js` | Match controller: commands, AI turns, clock, undo, hints, lessons, replay envelope |
 | `js/progress.js` | Save document and migration, achievements, the local board |
-| `js/strings.js`, `js/i18n.js`, `js/platform-strings.js` | Nine locales |
+| `assets/strings.json` | Nine locales |
 | `score-script.js` | Platform script posting finished ranked scores to the `high-score` board |
 | `server.js` | Authoritative hosted-play Game Script (tested, not packaged) |
 
