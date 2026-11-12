@@ -1,3 +1,7 @@
+import { localizedStyle as __l10nStyle } from "./l10n/font.ts";
+import { localizedDrawOptions as __l10nDrawOptions } from "./l10n/font.ts";
+// localization-runtime:attached
+import { openLocalizedOptions as __l10nOptions } from "./l10n/menu.ts";
 // The browser build's DOM shell (index.html + js/ui.js + css/style.css) as
 // starhermit:ui, built every frame: the title over its key art, Learn to
 // Play, the Journey list, the setup screens (practice form, the daily
@@ -13,7 +17,22 @@
 // actions a row above the hand) and short landscape (≤ 500 px tall: as
 // compact, with shorter tiles); the left-handed setting mirrors the rails.
 // The café table (render.ts) is framed into the playfield the HUD leaves.
-import { frame, openMenu } from "starhermit:engine";
+// The browser build's DOM shell (index.html + js/ui.js + css/style.css) as
+// starhermit:ui, built every frame: the title over its key art, Learn to
+// Play, the Journey list, the setup screens (practice form, the daily
+// table, challenges, pass-and-play / hosted play), the table (status bar
+// with objective, clock and score chips; the Table rail; the Actions rail
+// with the turn indicator; the tutorial banner; the chain strip with its
+// end caps; the hand tray of semantic domino tiles), Profile, Settings and
+// How to Play, and the overlays (pause, round summary, results, the Table
+// drawer, the erase confirmation), the toast and the caption strip. The
+// browser's media queries are layouts picked by the window's logical size:
+// wide (≥ 1024 px: both rails docked), compact (601–1023: the Table rail a
+// drawer, the Actions rail a narrow column), phone portrait (≤ 600: the
+// actions a row above the hand) and short landscape (≤ 500 px tall: as
+// compact, with shorter tiles); the left-handed setting mirrors the rails.
+// The café table (render.ts) is framed into the playfield the HUD leaves.
+import { frame } from "starhermit:engine";
 import { bindingLabel, bindings, requestRebind } from "starhermit:input";
 import * as draw from "starhermit:draw";
 import * as ui from "starhermit:ui";
@@ -60,9 +79,9 @@ function button(b: Btn, width: number | null = null): void {
   if (b.content) opts.content = b.content;
   else if (width != null && buttonWidth(b.text, style) > width) {
     const inner = Math.max(20, width - 24);
-    opts.content = () => { ui.style({ text: { align: "center" } }).paragraph(b.text, inner, { weight: "600" }); };
+    opts.content = () => { ui.style(__l10nStyle({ text: { align: "center" } })).paragraph(b.text, inner, { weight: "600" }); };
   }
-  if (ui.style(...style, s).id(b.id).button(b.text, opts)) b.act();
+  if (ui.style(...__l10nStyle(style), __l10nStyle(s)).id(b.id).button(b.text, opts)) b.act();
 }
 /** Buttons at their own widths in rows that wrap at `width` (CSS flex-wrap). */
 function flow(label: string, list: Btn[], width: number, align: "start" | "center" | "end" = "start", gap = 8): void {
@@ -75,19 +94,19 @@ function para(text: string, width: number, cls?: string | null, id?: string, cen
   if (!text) return;
   const styles: (string | ui.Style)[] = cls ? [cls] : ["body"];
   if (center) styles.push({ text: { align: "center" } });
-  let u = ui.style(...styles);
+  let u = ui.style(...__l10nStyle(styles));
   if (id) u = u.id(id);
   if (ui.measureText(text, { style: styles }).width / ui.preferences().scale <= width) u.label(text);
   else u.paragraph(text, width);
 }
 function heading(cls: "h1" | "h1-small" | "h2" | "h3" | "h3-accent", text: string, width: number, id?: string): void {
   if (ui.measureText(text, { kind: "heading", style: cls }).width / ui.preferences().scale <= width) (id ? ui.id(id) : ui).style(cls).heading(text);
-  else ui.style(cls).paragraph(text, width);
+  else ui.style(__l10nStyle(cls)).paragraph(text, width);
 }
 /** A definition list (CSS grid 1fr / auto, values at the end). */
 function dl(label: string, rows: [string, string][], w: number, dtCls = "stat-dt", ddCls = "stat-dd"): void {
   ui.grid(label, () => {
-    for (const [k, v] of rows) { para(k, w - 80, dtCls); ui.style(ddCls).label(v); }
+    for (const [k, v] of rows) { para(k, w - 80, dtCls); ui.style(__l10nStyle(ddCls)).label(v); }
   }, { columns: [{ fr: 1 }, { width: "auto", align: "end" }], gap: { row: 4, column: 12 }, width: w });
 }
 function kbdLabel(action: string): string { return bindingLabel(action, "keyboard"); }
@@ -179,8 +198,8 @@ function drawDomino(r: ui.Rect, a: number, b: number, o: TileLook, sc: number): 
     drawHalf(x + 3 * sc, y + h / 2 + 3 * sc, w - 6 * sc, h / 2 - 6 * sc, b, pip, 0.72);
   }
   if (o.numbers) {
-    draw.text(String(a), x + 3 * sc, y + 1 * sc, { size: 9 * sc, color: pip, weight: "800" });
-    draw.text(String(b), x + w - 3 * sc, y + h - 12 * sc, { size: 9 * sc, color: pip, weight: "800", align: "end" });
+    draw.text(String(a), x + 3 * sc, y + 1 * sc, __l10nDrawOptions({ size: 9 * sc, color: pip, weight: "800" }));
+    draw.text(String(b), x + w - 3 * sc, y + h - 12 * sc, __l10nDrawOptions({ size: 9 * sc, color: pip, weight: "800", align: "end" }));
   }
 }
 
@@ -265,7 +284,7 @@ function screen(key: string, L: Layout, maxW: number, build: (w: number) => void
 /** The screen head: ← Back and the heading (plus an extra on its right). */
 function head(id: string, title: string, w: number, extra?: () => void): void {
   ui.row(`${id}-head`, () => {
-    if (ui.style("btn", "btn-ghost").id(`${id}-first`).button(tr("← Back"))) back();
+    if (ui.style(__l10nStyle("btn"), __l10nStyle("btn-ghost")).id(`${id}-first`).button(tr("← Back"))) back();
     heading("h2", title, w - 120, `${id}-h`);
     if (extra) extra();
   }, { spacing: 14, align: "center", width: w });
@@ -310,11 +329,11 @@ function titleScreen(L: Layout): void {
     const won = Object.values(p.journey).filter((v) => v.stars > 0).length;
     const dailyDone = !!p.daily[today().dateKey];
     const menuBtn = (id: string, text: string, sub: string | null, act: () => void, badge = false): void => {
-      if (ui.style("btn", "btn-menu", { width: bw }).id(id).button(text, {
+      if (ui.style(__l10nStyle("btn"), __l10nStyle("btn-menu"), __l10nStyle({ width: bw })).id(id).button(text, {
         content: sub || badge ? () => ui.row(`${id}-face`, () => {
           ui.label(text, { weight: "600" });
-          if (sub) ui.style("menu-sub").label(sub);
-          if (badge) ui.style("badge").label(tr("done"));
+          if (sub) ui.style(__l10nStyle("menu-sub")).label(sub);
+          if (badge) ui.style(__l10nStyle("badge")).label(tr("done"));
         }, { spacing: 8, align: "center" }) : undefined,
       })) act();
     };
@@ -365,7 +384,7 @@ function learnScreen(L: Layout): void {
           para(tr(t.intro), tw, "card-desc");
         }, { width: tw, spacing: 2 });
         ui.spacer();
-        if (ui.style("btn", "btn-primary").id(`lesson-go-${i}`).button(tr(done ? N("Replay") : N("Start")))) startTutorial(t);
+        if (ui.style(__l10nStyle("btn"), __l10nStyle("btn-primary")).id(`lesson-go-${i}`).button(tr(done ? N("Replay") : N("Start")))) startTutorial(t);
         if (done) glyph("check", 18, currentPalette().good, "✓");
       }, { style: "card", width: w, spacing: 16, align: "center" });
     });
@@ -382,7 +401,7 @@ function journeyScreen(L: Layout): void {
   const total = C.JOURNEY.reduce((n, s) => n + ((p.journey[s.id] || { stars: 0 }).stars || 0), 0);
   screen("journey", L, 720, (w) => {
     head("journey", tr("Journey"), w, () => {
-      ui.row("journey-total", () => { glyph("star", 14, pal.accent, tr("Total stars")); ui.style("stars-total").label(`${total} / 120`); }, { spacing: 4, align: "center" });
+      ui.row("journey-total", () => { glyph("star", 14, pal.accent, tr("Total stars")); ui.style(__l10nStyle("stars-total")).label(`${total} / 120`); }, { spacing: 4, align: "center" });
     });
     para(tr("Forty tables across the café circuit. Mastery tables every eighth stop."), w, "screen-sub");
     let unlocked = true;
@@ -403,7 +422,7 @@ function journeyScreen(L: Layout): void {
         ui.spacer();
         if (open) stars(nStars, 15, pal.accent, ""); else glyph("lock", 18, "#c9a227");
       }, { spacing: 14, align: "center", width: w - 34 }); };
-      if (ui.style("journey-item", s.mastery ? "journey-mastery" : null, { width: w }).id(`stage-${s.number}`).button(label, { disabled: !open, content: face }) && open) startJourneyStage(s);
+      if (ui.style(__l10nStyle("journey-item"), __l10nStyle(s.mastery ? "journey-mastery" : null), __l10nStyle({ width: w })).id(`stage-${s.number}`).button(label, { disabled: !open, content: face }) && open) startJourneyStage(s);
       unlocked = unlocked && nStars > 0;
     }
   });
@@ -520,20 +539,20 @@ function statusBar(L: Layout, w: number): void {
     ui.row("statusbar-row", () => {
       const items: (() => void)[] = [];
       items.push(() => {
-        if (ui.style("btn", "btn-ghost", { minWidth: 44, padding: 6 }).id("btn-pause").button(tr("Pause menu"), { content: () => glyph("menu", 18, pal.muted) })) pauseGame();
+        if (ui.style(__l10nStyle("btn"), __l10nStyle("btn-ghost"), __l10nStyle({ minWidth: 44, padding: 6 })).id("btn-pause").button(tr("Pause menu"), { content: () => glyph("menu", 18, pal.muted) })) pauseGame();
       });
       items.push(() => {
         ui.column("hud-objective", () => {
-          ui.style("hud-objective", { text: { overflow: "ellipsis" } }).id("hud-objective").label(objectiveText());
+          ui.style(__l10nStyle("hud-objective"), __l10nStyle({ text: { overflow: "ellipsis" } })).id("hud-objective").label(objectiveText());
         }, { grow: 1, height: 44, justify: "center", align: left ? "end" : "start" });
       });
-      if (app.clockMs !== null) items.push(() => ui.style("hud-clock").id("hud-clock").label(fmtTime(app.clockMs!)));
+      if (app.clockMs !== null) items.push(() => ui.style(__l10nStyle("hud-clock")).id("hud-clock").label(fmtTime(app.clockMs!)));
       items.push(() => {
         const chips = (): void => {
           for (const [i, p] of v.players.entries()) {
             ui.row(`chip-${i}`, () => {
               ui.label(`${pn(p.name)} ${p.score}`);
-              ui.style("chip-pip").label(`(${p.handCount})`);
+              ui.style(__l10nStyle("chip-pip")).label(`(${p.handCount})`);
             }, { style: p.isTurn ? "score-chip-turn" : "score-chip", spacing: 4, align: "center" });
           }
         };
@@ -550,12 +569,12 @@ function statusBar(L: Layout, w: number): void {
 function railLeft(w: number): void {
   const v = view!;
   const g = game!;
-  ui.style("rail-title").label(tr("Table").toUpperCase());
+  ui.style(__l10nStyle("rail-title")).label(tr("Table").toUpperCase());
   if (v.leftEnd !== null) {
     para(tr("Open ends"), w, "muted");
     ui.row("big-ends", () => {
-      ui.style("big-end").id("end-left-value").label(String(v.leftEnd));
-      ui.style("big-end").id("end-right-value").label(String(v.rightEnd));
+      ui.style(__l10nStyle("big-end")).id("end-left-value").label(String(v.leftEnd));
+      ui.style(__l10nStyle("big-end")).id("end-right-value").label(String(v.rightEnd));
     }, { spacing: 12 });
   } else para(tr("No tiles on the table yet."), w, "muted");
   para(tr("Round {n}", { n: v.round }) + (v.targetScore > 0 ? " · " + tr("target {n}", { n: v.targetScore }) : " · " + tr("single match to best score")), w, "body", "rail-round");
@@ -581,10 +600,10 @@ function actionButton(a: Action, width: number, showKey: boolean, narrow = false
   const style = narrow ? ["btn", "btn-narrow"] : ["btn", "btn-action"];
   const opts: ui.ButtonOptions = { disabled: a.disabled };
   if (a.selected !== undefined) opts.selected = a.selected;
-  if (narrow) opts.content = () => ui.style({ text: { align: "center", size: 12 } }).paragraph(a.text, width - 10, { weight: "600" });
-  else if (buttonWidth(a.text, style) > width) opts.content = () => ui.style({ text: { align: "center" } }).paragraph(a.text, width - 16, { weight: "600" });
-  else if (showKey && a.key) opts.content = () => ui.row(`${a.id}-face`, () => { ui.label(a.text, { weight: "600" }); ui.style("kbd").label(a.key); }, { spacing: 8, align: "center" });
-  if (ui.style(...style, { width }).id(a.id).button(a.text, opts)) a.act();
+  if (narrow) opts.content = () => ui.style(__l10nStyle({ text: { align: "center", size: 12 } })).paragraph(a.text, width - 10, { weight: "600" });
+  else if (buttonWidth(a.text, style) > width) opts.content = () => ui.style(__l10nStyle({ text: { align: "center" } })).paragraph(a.text, width - 16, { weight: "600" });
+  else if (showKey && a.key) opts.content = () => ui.row(`${a.id}-face`, () => { ui.label(a.text, { weight: "600" }); ui.style(__l10nStyle("kbd")).label(a.key); }, { spacing: 8, align: "center" });
+  if (ui.style(...__l10nStyle(style), __l10nStyle({ width })).id(a.id).button(a.text, opts)) a.act();
 }
 function turnText(): string {
   const v = view!;
@@ -594,7 +613,7 @@ function turnIndicator(w: number, compact = false): void {
   const v = view!;
   const t = turnText();
   ui.column("turn-indicator", () => {
-    if (compact) ui.style({ text: { align: "center", size: 10 } }).paragraph(t, w - 4, { weight: "600" });
+    if (compact) ui.style(__l10nStyle({ text: { align: "center", size: 10 } })).paragraph(t, w - 4, { weight: "600" });
     else para(t, w - 24, null, "turn-text", true);
   }, { style: v.myTurn ? "turn-yours" : "turn-indicator", width: w, align: "center", ...(compact ? { padding: { top: 8, bottom: 8, start: 2, end: 2 } } : {}) });
 }
@@ -621,7 +640,7 @@ function gameScreen(L: Layout): void {
       ui.column("rail-left-col", () => railLeft(railL - 28), { spacing: 10, width: railL - 28 });
     }, { style: left ? "rail-right" : "rail-left", width: railL, height: midH });
     ui.place("rail-right", { anchor: left ? "top-start" : "top-end", x: 0, y: top }, () => {
-      ui.style("rail-title").label(tr("Actions").toUpperCase());
+      ui.style(__l10nStyle("rail-title")).label(tr("Actions").toUpperCase());
       for (const a of actions()) actionButton(a, railR - 28, true);
       ui.spacer();
       turnIndicator(railR - 28);
@@ -654,7 +673,7 @@ function gameScreen(L: Layout): void {
   // drawer toggle (compact layouts)
   if (!L.wide) {
     ui.place("drawer-toggle", { anchor: "top-start", x: playX + 8, y: top + 6 }, () => {
-      if (ui.style("drawer-toggle").id("toggle-rail-left").button(tr("Toggle table panel"), {
+      if (ui.style(__l10nStyle("drawer-toggle")).id("toggle-rail-left").button(tr("Toggle table panel"), {
         content: () => ui.row("drawer-face", () => { glyph("menu", 14, pal.text); ui.label(tr("Table")); }, { spacing: 6, align: "center" }),
       })) openOverlay("drawer");
     });
@@ -690,7 +709,7 @@ function chainStrip(L: Layout, px: number, top: number, pw: number, ph: number):
     const label = tr(end === "left" ? N("Play selected tile on left end ({value})") : N("Play selected tile on right end ({value})"), { value: val === null ? tr("open table") : val });
     const k = ui.preferences().reducedMotion ? 0 : Math.sin(frame().time * Math.PI / 0.8) * 0.5 + 0.5;
     const pal = currentPalette();
-    if (ui.style("end-cap", { border: { color: mix(pal.accent, k, pal.accent2) } }).id(`btn-end-${end}`).button(label, {
+    if (ui.style(__l10nStyle("end-cap"), __l10nStyle({ border: { color: mix(pal.accent, k, pal.accent2) } })).id(`btn-end-${end}`).button(label, {
       content: () => { if (val === null) glyph("dot", 16, pal.text); else ui.label(String(val)); },
     })) commitToEnd(end);
   };
@@ -698,7 +717,7 @@ function chainStrip(L: Layout, px: number, top: number, pw: number, ph: number):
     ui.row("chain-strip-row", () => {
       endCap("left");
       const tiles = (): void => {
-        if (!v.chain.length) { ui.style("strip-empty").id("strip-empty").label(tr("The table is empty — any tile opens the chain.")); return; }
+        if (!v.chain.length) { ui.style(__l10nStyle("strip-empty")).id("strip-empty").label(tr("The table is empty — any tile opens the chain.")); return; }
         for (const c of v.chain) {
           const label = tr(c.double ? N("{tile} double on the table") : N("{tile} on the table"), { tile: `${c.a}|${c.b}` });
           ui.widget(label, { role: "image", size: { width: 58, height: 30 }, draw: (r, st) => drawDomino(r, c.a, c.b, { flat: true, numbers: !!settings.showNumbers }, st.scale) });
@@ -720,7 +739,7 @@ function handTray(_L: Layout, tw: number, th: number, width: number, anchor: "bo
   const sel = v.selectedTile;
   const handOwner = v.hotseat ? tr("{name}’s hand", { name: pn(v.myName) }) : tr("Your hand");
   return ui.place("hand-tray", anchor, () => {
-    ui.style("hand-label").id("hand-label").label(`${handOwner.toUpperCase()} (${v.myHand.length})`);
+    ui.style(__l10nStyle("hand-label")).id("hand-label").label(`${handOwner.toUpperCase()} (${v.myHand.length})`);
     const tiles = (): void => {
       for (const id of v.myHand) {
         const face = v.tileFaces[id];
@@ -797,7 +816,7 @@ function profileScreen(L: Layout): void {
       heading("h3", tr("Leaderboards"), inner);
       ui.row("lb-tabs", () => {
         for (const [k, label] of [["local", N("This device")], ["global", N("Global")], ["daily", N("Daily")]] as const) {
-          if (ui.style("lb-tab").id(`lb-${k}`).button(tr(label), { selected: app.lbTab === k })) setBoardTab(k);
+          if (ui.style(__l10nStyle("lb-tab")).id(`lb-${k}`).button(tr(label), { selected: app.lbTab === k })) setBoardTab(k);
         }
       }, { spacing: 6 });
       const rows = app.boardRows;
@@ -829,7 +848,7 @@ function settingsScreen(L: Layout): void {
     };
     const options = (note: string, id: string): void => {
       para(tr(note), inner, "muted");
-      button({ id, text: tr("Open Options"), act: () => openMenu() });
+      button({ id, text: tr("Open Options"), act: () => __l10nOptions() });
     };
     const audioP = (): void => panel("s-audio", tr("Audio"), () => options(N("Music, effects and voice volumes and mute are set in the StarHermit Options (F1)."), "btn-options-audio"));
     const gfxP = (): void => panel("s-graphics", tr("Graphics"), () => {
@@ -907,7 +926,7 @@ function helpScreen(L: Layout): void {
         [N("Left end / right end"), `${k("end_left")} / ${k("end_right")}`], [N("Draw / pass"), `${k("draw")} / ${k("pass")}`],
         [N("Undo / hint"), `${k("undo")} / ${k("hint")}`], [N("Reset camera"), k("camera")],
       ];
-      for (const [text, keys] of rows) ui.row(`ctl-${text}`, () => { ui.style("kbd-plain").label(keys); para(tr(text), inner - textWidth(keys, "kbd-plain") - 30, "body"); }, { spacing: 8, align: "center" });
+      for (const [text, keys] of rows) ui.row(`ctl-${text}`, () => { ui.style(__l10nStyle("kbd-plain")).label(keys); para(tr(text), inner - textWidth(keys, "kbd-plain") - 30, "body"); }, { spacing: 8, align: "center" });
       para(tr("Gamepad: D-pad or left stick moves focus, A confirms, B cancels, Start pauses, X draws, Y hints."), inner, "muted");
     }, { style: "rule-card", width: w, spacing: 8 });
   });
@@ -967,7 +986,7 @@ function breakdownRow(id: string, left: string, right: string, w: number, cls: s
   ui.row(id, () => {
     para(left, w - 90, cls === "breakdown-head" ? null : "body");
     ui.spacer();
-    ui.style(cls === "breakdown-head" ? "breakdown-head" : "pts").label(right);
+    ui.style(__l10nStyle(cls === "breakdown-head" ? "breakdown-head" : "pts")).label(right);
   }, { style: cls, width: w, spacing: 14, align: "center" });
 }
 function roundOverlay(L: Layout): void {
@@ -1048,7 +1067,7 @@ function captionStrip(L: Layout, playing: boolean): void {
   if (app.caption) {
     const text = tr(app.caption.text);
     ui.place("captions", { anchor: "bottom", y: bottom + (toastUp() ? 56 : 0) + 4 }, () => {
-      ui.row("caption-row", () => { glyph("note", 12, currentPalette().text); ui.style("captions", { padding: 0, background: "#00000000" }).id("caption-text").label(text); }, { spacing: 4, align: "center" });
+      ui.row("caption-row", () => { glyph("note", 12, currentPalette().text); ui.style(__l10nStyle("captions"), __l10nStyle({ padding: 0, background: "#00000000" })).id("caption-text").label(text); }, { spacing: 4, align: "center" });
     }, { style: "captions" });
   }
 }
