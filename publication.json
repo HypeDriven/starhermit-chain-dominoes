@@ -1,0 +1,98 @@
+{
+  "game": {
+    "id": "309dc142-8d12-43f4-94a4-18bef66b5607",
+    "displayName": "Chain Dominoes",
+    "hosting": {
+      "hostingEnabled": true,
+      "hostedUrl": "https://309dc142-8d12-43f4-94a4-18bef66b5607.starhermit.com/index.html",
+      "deployStatus": "live",
+      "pinnedCommitSha": null,
+      "deployedCommitSha": null,
+      "deployError": null,
+      "deployedAt": "2026-11-12T08:13:19.295242+00:00",
+      "externalLaunchUrl": null,
+      "engineVersion": "1.38.0",
+      "deployWarning": null
+    }
+  },
+  "publishedAt": "2026-11-12T08:13:24.008Z",
+  "sourceCommit": "3df5fdd72fc580ea14e0f4dbda5fd2ee2abdbfe3",
+  "bytesReceived": 2669421,
+  "archiveSha256": "08e6c247d476ec519bb4d14af8fb4f2df939c7bd58003025a0bed6c9d7840ad6",
+  "indexSha256": "e99e7ef3021b0c0df3ea1d1f27536599327bc540676633b9874686214bedd937",
+  "result": {
+    "clientPublished": true,
+    "serverImageLoaded": false,
+    "imageDigest": null,
+    "bytesReceived": 2669421,
+    "mode": "replace",
+    "filesRemoved": 0,
+    "engineVersion": "1.38.0",
+    "deployWarning": null
+  },
+  "liveVerification": {
+    "at": "2026-11-12T08:13:24.008Z",
+    "files": [
+      {
+        "file": "starhermit-files.json",
+        "sha256": "e99e7ef3021b0c0df3ea1d1f27536599327bc540676633b9874686214bedd937",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/Japanese.otf",
+        "sha256": "68012023a484c21f95093cd6488670031144ba6f56dea0e0561fe86cf04a992a",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/Khmer.ttf",
+        "sha256": "e61c756b0b2817a362088f96eaf47d581b625a29e890770d28c0bdbb8ed7f732",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/SimplifiedChinese.otf",
+        "sha256": "83917ca8b1dd08e1d6a3fca6fb3bdf6d25fc1ad4c3aa2975609e308e7a84a5a5",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/Tamil.ttf",
+        "sha256": "9a7bfb22c85f01b335b87528ed6e4da63877cb74ceae87dc748e83395f7b0aca",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/TraditionalChinese.otf",
+        "sha256": "903ee859994fc10a587d744fd1d219801cc11c36b6b65e89abb1334c4997b481",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/common.json",
+        "sha256": "20c0e4a502c5eaa5401a77fa9a5dfa59891700d6f519b7fd8fcc7efb07aa5316",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/fonts.json",
+        "sha256": "37beaea0dba54c9f2c45995cbf9fd19fad21719d701718c41d7e58dd7748ca13",
+        "status": 200
+      },
+      {
+        "file": "assets/localization/locales.json",
+        "sha256": "441129a118de3a5befd95a076ad5ef07ef61b228416e8b00aa4ce713d8fa7e1f",
+        "status": 200
+      },
+      {
+        "file": "assets/strings.json",
+        "sha256": "f95744ffae7627735df4e6462d247eed0842e922e13a71ae3fa8a5083e3b541f",
+        "status": 200
+      },
+      {
+        "file": "index.html",
+        "sha256": "3dbaed5ec670d1e1d3de8bab72c81abfd0dda71c251aebe287a3a102e12fd123",
+        "status": 200
+      },
+      {
+        "file": "starhermit.txt",
+        "sha256": "9c24238dd211259f6b03818261f890644e5ea11ee8be459b854bbaafeed9d65f",
+        "status": 200
+      }
+    ]
+  }
+}
