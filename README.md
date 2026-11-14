@@ -1,5 +1,7 @@
 # Chain Dominoes
 
+**[▶ Play Chain Dominoes on StarHermit](https://dashboard.starhermit.com/play/309dc142-8d12-43f4-94a4-18bef66b5607)**
+
 A café-tabletop dominoes game. Match the open ends of the chain, empty your
 hand, and keep your remaining pips low when the table locks up. A StarHermit
 engine script game (engine 1.24.0): one package, played natively by the
