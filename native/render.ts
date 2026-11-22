@@ -844,6 +844,7 @@ export function applyLook(next: Look): void {
     vignette: { amount: 0.2, inner: 0.4, outer: 0.85 },
   } : null;
   renderer.antialias = next.antialias;
+  renderer.motionBlur = next.bloom !== null ? { intensity: 0.25, samples: 8, maxPixels: 16, targetFps: 60, camera: false } : null;
   build();
   for (const tex of staleFaces) tex.dispose(); // build() replaced the tiles that used them
 }

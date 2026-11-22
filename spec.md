@@ -1,6 +1,6 @@
 # Chain Dominoes — Game Design Document (running spec)
 
-**Status:** shipped, v1.0.0 (`starhermit.txt`), content version 1, on the StarHermit engine 1.44.1. This document describes what the game does today, in
+**Status:** shipped, v1.0.0 (`starhermit.txt`), content version 1, on the StarHermit engine 1.47.0. This document describes what the game does today, in
 present tense. Anything the design wants that the code does not yet do is listed once, at the end, under
 "Design intent not yet implemented".
 
@@ -14,15 +14,15 @@ felt, go out first or hold the fewest pips when the table locks, and race an opp
 | Genre | Turn-based tile game (draw dominoes, double-six set) |
 | Players | 1 human vs 1-3 deterministic AI seats; 2 humans pass-and-play on one device; 2-4 humans through the hosted Game Script |
 | Session | One lesson 1-2 min; a journey stage 5-15 min; a daily table 5-10 min; a challenge 3-15 min |
-| Platforms | A StarHermit engine script game (engine 1.44.1, host API 1.44, `engine.minor=44`): played natively by the StarHermit client and in desktop and mobile browsers by the engine's web runtime from one package, any orientation |
+| Platforms | A StarHermit engine script game (engine 1.47.0, host API 1.47, `engine.minor=47`): played natively by the StarHermit client and in desktop and mobile browsers by the engine's web runtime from one package, any orientation |
 | Rendering | `starhermit:scene` draws the café tabletop (ceramic tiles, felt, props, lights, post effects); `starhermit:ui` draws every screen, the HUD, the chain strip and the hand tray of drawn domino tiles over it. The hand, end caps and action buttons are the always-usable control surface; the 3D table is also tappable |
-| Dependencies | None at runtime. Dev: the StarHermit runtime 1.44.1 (`check`, `--render-check`, `package --web`, `css`), TypeScript 5.9, `playwright-core` for the browser check |
+| Dependencies | None at runtime. Dev: the StarHermit runtime 1.47.0 (`check`, `--render-check`, `package --web`, `css`), TypeScript 5.9, `playwright-core` for the browser check |
 
 ### File map
 
 | Path | Role |
 |---|---|
-| `starhermit.txt` | Manifest: name, description, owner, `server=score-script.js`, cover, `launch=index.html`, `engine.api=1`, `engine.entry=native/main.ts`, `engine.version=1.44.1`, `engine.minor=44`, capabilities `platform,storage,clipboard`, `control.*` keys and `engine.gamepad.*` buttons for the 14 actions |
+| `starhermit.txt` | Manifest: name, description, owner, `server=score-script.js`, cover, `launch=index.html`, `engine.api=1`, `engine.entry=native/main.ts`, `engine.version=1.47.0`, `engine.minor=47`, capabilities `platform,storage,clipboard`, `control.*` keys and `engine.gamepad.*` buttons for the 14 actions |
 | `index.html`, `starhermit-files.json` | The engine's web loader and the package's file index, written by `npm run package` (never edited by hand) |
 | `native/main.ts` | Entry: navigation, match start / pause / leave / continue, selection and the command pipeline, the AI timers and match clock on the fixed steps, outcomes, toasts, captions, leaderboard posting, matchmaking, input routing (actions, pointer and touch picking), lifecycle |
 | `native/screens.ts` | Every screen, the game HUD (status bar, rails, tutorial banner, chain strip, hand tray), overlays, toasts, captions, drawn glyphs and dominoes |
@@ -441,8 +441,12 @@ The string tables include complete regional variants for `fr-BE`, `de-BE`, `en-S
 
 <!-- regional-localization:end -->
 
-## Engine 1.44.1
+## Engine 1.47.0
 
-Browser play uses the WebGPU-only StarHermit 1.44.1 web runtime. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
+Browser play uses the WebGPU-only StarHermit 1.47.0 web runtime. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
 
 The help screen replays through retained native UI while its contents, options, layout and key bindings are unchanged.
+
+Browser rendering uses the engine's asynchronous pipeline creation so newly encountered materials do not stall the page. Native play retains the engine's synchronous pipeline behavior.
+
+Higher graphics tiers use native per-object motion blur for moving pieces and effects. Camera motion stays sharp, lower tiers omit the effect, and the runtime's Motion blur and Reduce motion preferences remain authoritative.
