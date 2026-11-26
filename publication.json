@@ -12,7 +12,7 @@
     "metadataSource": "starhermit.txt",
     "createdAt": "2026-08-17T19:14:24.889646+00:00",
     "coverArtSource": "manifest",
-    "coverArtUpdatedAt": "2026-11-23T17:01:24.327599+00:00",
+    "coverArtUpdatedAt": "2026-11-26T11:44:18.012719+00:00",
     "submittedByUserId": "2712e04e-461b-4d23-81ae-e40b429128a8",
     "submittedByUsername": "starhermit",
     "hosting": {
@@ -22,9 +22,9 @@
       "pinnedCommitSha": null,
       "deployedCommitSha": null,
       "deployError": null,
-      "deployedAt": "2026-11-23T17:01:24.316835+00:00",
+      "deployedAt": "2026-11-26T11:44:17.999387+00:00",
       "externalLaunchUrl": null,
-      "engineVersion": "1.47.0",
+      "engineVersion": "1.50.0",
       "deployWarning": null
     },
     "description": "Match domino ends, empty your hand, and keep your remaining pip count low to outscore your opponents.",
@@ -36,19 +36,19 @@
     "links": [],
     "isDisabled": false
   },
-  "publishedAt": "2026-11-23T17:01:24.434Z",
-  "sourceCommit": "606959ac55c070190e18e0638d30ecc0c789ca1e",
-  "bytesReceived": 4774445,
-  "archiveSha256": "90481f4f2d9a565f78484816516e3fade9102066771caae354af3976b66bc9a5",
+  "publishedAt": "2026-11-26T11:44:18.143Z",
+  "sourceCommit": "d58a7eb827a6b72498b95128ca198bf2c199058f",
+  "bytesReceived": 4774520,
+  "archiveSha256": "313c1fad1225bcc8cf062e662a8a95ac2f88cb887a575a42d6f3194980cd5ca0",
   "indexSha256": "26a82c10c6fc5d732518171be42092b3df1786ac0fca37d079a99bcadfe325b0",
   "result": {
     "clientPublished": true,
     "serverImageLoaded": false,
     "imageDigest": null,
-    "bytesReceived": 4774445,
+    "bytesReceived": 4774520,
     "mode": "replace",
     "filesRemoved": 0,
-    "engineVersion": "1.47.0",
+    "engineVersion": "1.50.0",
     "deployWarning": null
   },
   "liveVerification": {
