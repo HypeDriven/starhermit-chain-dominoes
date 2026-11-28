@@ -34,7 +34,6 @@ export function loadSfx(): void {
   for (const name of new Set([...FIRST, ...SAMPLE_FILES])) {
     loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); }, (e: unknown) => console.warn(`sfx ${name}: ${String(e)}`));
   }
-  void renderVoices().catch((e: unknown) => console.warn(`audio: ${String(e)}`));
 }
 
 let captionFn: ((text: string) => void) | null = null;
@@ -172,7 +171,17 @@ export function duck(on: boolean): void {
 }
 
 /** Each frame once the mixer runs and the voices are rendered: the room tone and the pad's chords by mixer time. */
+let __bedsStarted = false;
+function startBeds(): void {
+  if (__bedsStarted) return;
+  __bedsStarted = true;
+  void (async () => {
+    void renderVoices().catch((e: unknown) => console.warn(`audio: ${String(e)}`));
+  })();
+}
+
 export function update(): void {
+  startBeds();
   if (context.state !== "running") return;
   if (!playing || !room) return;
   const now = context.currentTime;
